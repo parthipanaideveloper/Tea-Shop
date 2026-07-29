@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1089119686227",
+    "project_id": "dts-pos-f4b4b",
+    "storage_bucket": "dts-pos-f4b4b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1089119686227:android:92dd05d3a1001064cb80a6",
+        "android_client_info": {
+          "package_name": "com.example.pos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWIEUvZm86SUn_AK_LxBZs78MdDdxBn1Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
