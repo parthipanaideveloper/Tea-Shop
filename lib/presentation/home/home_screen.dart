@@ -173,8 +173,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   }
 
   Future<void> _processCheckoutAndPrint() async {
-      final cart = ref.read(cartProvider);
-      if (cart.isEmpty) {
+      final cartState = ref.read(cartProvider);
+      if (cartState.items.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cart is empty!'), backgroundColor: Colors.red));
         }
@@ -186,11 +186,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       final session = ref.read(authProvider);
       final staffName = session?.name ?? 'Admin';
       
-      final subtotal = ref.read(cartProvider.notifier).subtotal;
+      final subtotal = cartState.subtotal;
       
       // Save order
       await orderNotifier.saveOrder(
-        items: cart,
+        items: cartState.items,
         total: subtotal,
         subtotal: subtotal,
         tax: 0,
@@ -208,7 +208,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       // Print Simple Receipt
       final settings = ref.read(settingsProvider);
       final receiptBytes = await PrinterService.generateReceiptBytes(
-        items: cart,
+        items: cartState.items,
         subtotal: subtotal,
         tax: 0,
         discount: 0,
