@@ -61,7 +61,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   @override
   void initState() {
     super.initState();
-    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _tryAutoConnectPrinter();
@@ -268,7 +267,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 
   @override
   void dispose() {
-    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -1206,17 +1204,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                     label: 'Analytics'.tr(ref.watch(languageProvider))),
               ]));
 
-    return PopScope(
-      canPop: activeIndex == 0,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-
-        setState(() {
-          _navigationHistory.removeLast();
-          ref.read(globalNavigationProvider.notifier).state = _navigationHistory.last;
-        });
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (_handleKeyEvent(event)) {
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
       },
-      child: mainScaffold);
+      child: PopScope(
+        canPop: activeIndex == 0,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+
+          setState(() {
+            _navigationHistory.removeLast();
+            ref.read(globalNavigationProvider.notifier).state = _navigationHistory.last;
+          });
+        },
+        child: mainScaffold),
+    );
   }
 }
 
