@@ -24,32 +24,32 @@ class TeaShopSeeder {
     // 2. Define Products
     final List<Product> defaultProducts = [
       // Tea
-      _createProduct(uuid.v4(), 'Single Tea', 'Tea', 10.0, 'T01'),
-      _createProduct(uuid.v4(), 'Parcel Tea', 'Tea', 40.0, 'T02'),
-      _createProduct(uuid.v4(), 'Parcel Tea Large', 'Tea', 50.0, 'T03'),
-      _createProduct(uuid.v4(), 'Ginger Tea', 'Tea', 20.0, 'T04'),
+      _createProduct('PROD_T01', 'Single Tea', 'Tea', 10.0, 'T01'),
+      _createProduct('PROD_T02', 'Parcel Tea', 'Tea', 40.0, 'T02'),
+      _createProduct('PROD_T03', 'Parcel Tea Large', 'Tea', 50.0, 'T03'),
+      _createProduct('PROD_T04', 'Ginger Tea', 'Tea', 20.0, 'T04'),
 
       // Coffee
-      _createProduct(uuid.v4(), 'Coffee', 'Coffee', 20.0, 'C01'),
-      _createProduct(uuid.v4(), 'Parcel Coffee', 'Coffee', 50.0, 'C02'),
+      _createProduct('PROD_C01', 'Coffee', 'Coffee', 20.0, 'C01'),
+      _createProduct('PROD_C02', 'Parcel Coffee', 'Coffee', 50.0, 'C02'),
 
       // Cigarette
-      _createProduct(uuid.v4(), 'Cigarette 10', 'Cigarette', 10.0, 'CG01'),
-      _createProduct(uuid.v4(), 'Cigarette 12', 'Cigarette', 12.0, 'CG02'),
-      _createProduct(uuid.v4(), 'Cigarette 15', 'Cigarette', 15.0, 'CG03'),
-      _createProduct(uuid.v4(), 'Cigarette 25', 'Cigarette', 25.0, 'CG04'),
+      _createProduct('PROD_CG01', 'Cigarette 10', 'Cigarette', 10.0, 'CG01'),
+      _createProduct('PROD_CG02', 'Cigarette 12', 'Cigarette', 12.0, 'CG02'),
+      _createProduct('PROD_CG03', 'Cigarette 15', 'Cigarette', 15.0, 'CG03'),
+      _createProduct('PROD_CG04', 'Cigarette 25', 'Cigarette', 25.0, 'CG04'),
 
       // Cool Drinks
-      _createProduct(uuid.v4(), 'Cool Drink Small', 'Cool Drinks', 10.0, 'D01'),
-      _createProduct(uuid.v4(), 'Cool Drink Medium', 'Cool Drinks', 15.0, 'D02'),
-      _createProduct(uuid.v4(), 'Cool Drink Large', 'Cool Drinks', 20.0, 'D03'),
+      _createProduct('PROD_D01', 'Cool Drink Small', 'Cool Drinks', 10.0, 'D01'),
+      _createProduct('PROD_D02', 'Cool Drink Medium', 'Cool Drinks', 15.0, 'D02'),
+      _createProduct('PROD_D03', 'Cool Drink Large', 'Cool Drinks', 20.0, 'D03'),
 
       // Water Bottle
-      _createProduct(uuid.v4(), 'Water Bottle 10', 'Water Bottle', 10.0, 'W01'),
-      _createProduct(uuid.v4(), 'Water Bottle 20', 'Water Bottle', 20.0, 'W02'),
-      _createProduct(uuid.v4(), 'Water Bottle 30', 'Water Bottle', 30.0, 'W03'),
-      _createProduct(uuid.v4(), 'Water Bottle 60', 'Water Bottle', 60.0, 'W04'),
-      _createProduct(uuid.v4(), 'Water Bottle 90', 'Water Bottle', 90.0, 'W05'),
+      _createProduct('PROD_W01', 'Water Bottle 10', 'Water Bottle', 10.0, 'W01'),
+      _createProduct('PROD_W02', 'Water Bottle 20', 'Water Bottle', 20.0, 'W02'),
+      _createProduct('PROD_W03', 'Water Bottle 30', 'Water Bottle', 30.0, 'W03'),
+      _createProduct('PROD_W04', 'Water Bottle 60', 'Water Bottle', 60.0, 'W04'),
+      _createProduct('PROD_W05', 'Water Bottle 90', 'Water Bottle', 90.0, 'W05'),
     ];
 
     // 3. Save to Hive

@@ -94,71 +94,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     }
 
     if (targetProduct != null) {
-      final orderNotifier = ref.read(orderProvider.notifier);
-      final newOrderId = orderNotifier.generateNextOrderId();
-      final session = ref.read(authProvider);
-      final staffName = session?.name ?? 'Admin';
+      // Add to cart
+      ref.read(cartProvider.notifier).addProduct(targetProduct);
       
-      final cartItem = CartItem(product: targetProduct, quantity: 1);
-
-      await orderNotifier.saveOrder(
-        items: [cartItem],
-        total: targetProduct.price,
-        subtotal: targetProduct.price,
-        tax: 0,
-        discount: 0,
-        paymentMode: 'CASH',
-        paymentStatus: 'PAID',
-        customerName: '',
-        customerPhone: '',
-        staffName: staffName,
-        orderType: 'DINE',
-        dineTableNo: '',
-        id: newOrderId,
-      );
-
-      final settings = ref.read(settingsProvider);
-      final receiptBytes = await PrinterService.generateReceiptBytes(
-        items: [cartItem],
-        subtotal: targetProduct.price,
-        tax: 0,
-        discount: 0,
-        total: targetProduct.price,
-        shopName: settings.shopName,
-        receiptHeader: settings.receiptHeader,
-        receiptFooter: settings.receiptFooter,
-        showGstOnReceipt: settings.showGstOnReceipt,
-        gstNumber: settings.gstNumber,
-        isUnpaid: false,
-        orderId: newOrderId,
-        tableNo: '',
-        orderType: 'DINE',
-        customerName: '',
-        customerPhone: '',
-        printAsImage: settings.printAsImage,
-        is80mmPaper: settings.is80mmPaper,
-        parcelToken: null,
-        addressLine1: settings.addressLine1,
-        addressLine2: settings.addressLine2,
-        hotelType: settings.hotelType,
-        mobileNumber: settings.mobileNumber,
-        fssaiNumber: settings.fssaiNumber,
-        enableAddressOnReceipt: settings.enableAddressOnReceipt,
-        enableMobileOnReceipt: settings.enableMobileOnReceipt,
-        enableFssaiOnReceipt: settings.enableFssaiOnReceipt,
-        enableHotelTypeOnReceipt: settings.enableHotelTypeOnReceipt,
-      );
-
-      if (receiptBytes != null) {
-        await ref.read(printerProvider.notifier).printReceipt(receiptBytes);
+      // Ensure we are on the Checkout screen
+      final currentRoute = ref.read(globalNavigationProvider);
+      if (currentRoute != 'checkout') {
+         ref.read(globalNavigationProvider.notifier).state = 'checkout';
+         setState(() {
+           _navigationHistory.remove('checkout');
+           _navigationHistory.add('checkout');
+         });
       }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Printed: \${targetProduct.name}'),
-            backgroundColor: Colors.green,
-            duration: const Duration(milliseconds: 1000),
+            content: Text('Added \${targetProduct.name} to Cart'),
+            backgroundColor: Colors.blueAccent,
+            duration: const Duration(milliseconds: 500),
           )
         );
       }

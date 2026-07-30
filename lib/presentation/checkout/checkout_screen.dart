@@ -1028,7 +1028,10 @@ class _QuickAddProductCard extends ConsumerWidget {
                         'product_images',
                       ).listenable(keys: [product.id]),
                       builder: (context, imgBox, _) {
-                        final currentImgPath = imgBox.get(product.id);
+                        String? currentImgPath = imgBox.get(product.id);
+                        if (currentImgPath == null || currentImgPath.isEmpty) {
+                          currentImgPath = Hive.box<String>('category_images').get(product.category);
+                        }
                         return Container(
                           decoration: BoxDecoration(
                             color: Colors.grey.shade50,
