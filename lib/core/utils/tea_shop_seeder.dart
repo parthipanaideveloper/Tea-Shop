@@ -57,11 +57,19 @@ class TeaShopSeeder {
     await productsBox.putAll(productMap);
 
     // 4. Set specific Product Images
-    await productImagesBox.put(defaultProducts.firstWhere((p) => p.name == 'Coffee').id, 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=300&q=80');
-    await productImagesBox.put(defaultProducts.firstWhere((p) => p.name == 'Water Bottle 10').id, 'https://images.unsplash.com/photo-1523362628745-0c100150b504?auto=format&fit=crop&w=300&q=80');
-    await productImagesBox.put(defaultProducts.firstWhere((p) => p.name == 'Single Tea').id, 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=300&q=80');
-    await productImagesBox.put(defaultProducts.firstWhere((p) => p.name == 'Ginger Tea').id, 'https://images.unsplash.com/photo-1596450514735-1100df3d8579?auto=format&fit=crop&w=300&q=80');
-    await productImagesBox.put(defaultProducts.firstWhere((p) => p.name == 'Cool Drink Small').id, 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=300&q=80');
+    for (var p in defaultProducts) {
+      if (p.category == 'Tea') {
+        await productImagesBox.put(p.id, 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=300&q=80');
+      } else if (p.category == 'Coffee') {
+        await productImagesBox.put(p.id, 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=300&q=80');
+      } else if (p.category == 'Cigarette') {
+        await productImagesBox.put(p.id, 'https://images.unsplash.com/photo-1596726759795-1f8cb1594917?auto=format&fit=crop&w=300&q=80');
+      } else if (p.category == 'Cool Drinks') {
+        await productImagesBox.put(p.id, 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=300&q=80');
+      } else if (p.category == 'Water Bottle') {
+        await productImagesBox.put(p.id, 'https://images.unsplash.com/photo-1523362628745-0c100150b504?auto=format&fit=crop&w=300&q=80');
+      }
+    }
 
     print('Tea Shop Seed Data Injected Successfully: \${defaultProducts.length} items added.');
   }

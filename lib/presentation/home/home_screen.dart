@@ -68,13 +68,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 
   bool _handleKeyEvent(KeyEvent event) {
     if (event is KeyDownEvent) {
-      if (event.logicalKey == LogicalKeyboardKey.digit1 || event.logicalKey == LogicalKeyboardKey.numpad1) { _processInstantKey('1'); return true; }
-      if (event.logicalKey == LogicalKeyboardKey.digit2 || event.logicalKey == LogicalKeyboardKey.numpad2) { _processInstantKey('2'); return true; }
-      if (event.logicalKey == LogicalKeyboardKey.digit3 || event.logicalKey == LogicalKeyboardKey.numpad3) { _processInstantKey('3'); return true; }
-      if (event.logicalKey == LogicalKeyboardKey.digit4 || event.logicalKey == LogicalKeyboardKey.numpad4) { _processInstantKey('4'); return true; }
-      if (event.logicalKey == LogicalKeyboardKey.digit5 || event.logicalKey == LogicalKeyboardKey.numpad5) { _processInstantKey('5'); return true; }
-      if (event.logicalKey == LogicalKeyboardKey.digit6 || event.logicalKey == LogicalKeyboardKey.numpad6) { _processInstantKey('6'); return true; }
-      if (event.logicalKey == LogicalKeyboardKey.digit7 || event.logicalKey == LogicalKeyboardKey.numpad7) { _processInstantKey('7'); return true; }
+      final char = event.character;
+      if (char == '1' || event.logicalKey == LogicalKeyboardKey.digit1 || event.logicalKey == LogicalKeyboardKey.numpad1) { _processInstantKey('1'); return true; }
+      if (char == '2' || event.logicalKey == LogicalKeyboardKey.digit2 || event.logicalKey == LogicalKeyboardKey.numpad2) { _processInstantKey('2'); return true; }
+      if (char == '3' || event.logicalKey == LogicalKeyboardKey.digit3 || event.logicalKey == LogicalKeyboardKey.numpad3) { _processInstantKey('3'); return true; }
+      if (char == '4' || event.logicalKey == LogicalKeyboardKey.digit4 || event.logicalKey == LogicalKeyboardKey.numpad4) { _processInstantKey('4'); return true; }
+      if (char == '5' || event.logicalKey == LogicalKeyboardKey.digit5 || event.logicalKey == LogicalKeyboardKey.numpad5) { _processInstantKey('5'); return true; }
+      if (char == '6' || event.logicalKey == LogicalKeyboardKey.digit6 || event.logicalKey == LogicalKeyboardKey.numpad6) { _processInstantKey('6'); return true; }
+      if (char == '7' || event.logicalKey == LogicalKeyboardKey.digit7 || event.logicalKey == LogicalKeyboardKey.numpad7) { _processInstantKey('7'); return true; }
     }
     return false;
   }
