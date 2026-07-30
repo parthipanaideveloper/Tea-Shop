@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "1089119686227",
-    "project_id": "dts-pos-f4b4b",
-    "storage_bucket": "dts-pos-f4b4b.firebasestorage.app"
+    "project_number": "546784331733",
+    "project_id": "tea-shop-3b821",
+    "storage_bucket": "tea-shop-3b821.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1089119686227:android:92dd05d3a1001064cb80a6",
+        "mobilesdk_app_id": "1:546784331733:android:a26556e41ac1f0cef65f5c",
         "android_client_info": {
           "package_name": "com.example.pos"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBWIEUvZm86SUn_AK_LxBZs78MdDdxBn1Q"
+          "current_key": "AIzaSyB2Ce-UgWDznU-wfJnsf9PBPWOctv_mcao"
         }
       ],
       "services": {

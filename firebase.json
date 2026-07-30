@@ -1,17 +1,1 @@
-{
-  "firestore": {
-    "rules": "firestore.rules"
-  },
-  "functions": [
-    {
-      "source": "functions",
-      "codebase": "default",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log"
-      ]
-    }
-  ]
-}
+{"firestore":{"rules":"firestore.rules"},"functions":[{"source":"functions","codebase":"default","ignore":["node_modules",".git","firebase-debug.log","firebase-debug.*.log"]}],"flutter":{"platforms":{"android":{"default":{"projectId":"tea-shop-3b821","appId":"1:546784331733:android:a26556e41ac1f0cef65f5c","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"tea-shop-3b821","configurations":{"android":"1:546784331733:android:a26556e41ac1f0cef65f5c","ios":"1:546784331733:ios:bfdaa181212bfc49f65f5c","macos":"1:546784331733:ios:bfdaa181212bfc49f65f5c","web":"1:546784331733:web:7f6b783c6d0cc4a9f65f5c","windows":"1:546784331733:web:5db157b597fb2e0bf65f5c"}}}}}}

@@ -26,6 +26,7 @@ import 'services/firebase_sync_service.dart';
 import 'services/security_service.dart';
 import 'core/services/app_error_logger.dart';
 import 'core/utils/ui_utils.dart';
+import 'core/utils/tea_shop_seeder.dart';
 
 Future<Box<T>> _openEncryptedBoxSafe<T>(String name, HiveAesCipher cipher) async {
   try {
@@ -120,6 +121,9 @@ void main() async {
     await Hive.openBox<String>('customers');
     await Hive.openBox<String>('category_order');
     await Hive.openBox<String>('product_order');
+
+    // Seed the database with Tea Shop items
+    await TeaShopSeeder.seedDatabase();
 
     // Initialize Firebase safely (all boxes must be open before sync listeners start)
     // We initialize it in the background so it does not block the UI from opening if it hangs

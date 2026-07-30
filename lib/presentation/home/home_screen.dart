@@ -30,6 +30,12 @@ import '../../providers/language_provider.dart';
 import '../../services/firebase_sync_service.dart';
 import 'package:flutter/foundation.dart';
 import 'desktop_dashboard_shell.dart';
+import '../../core/hardware/printer_service.dart';
+import '../../providers/order_provider.dart';
+import '../../domain/models/order.dart';
+import '../../domain/models/cart_item.dart';
+import '../../domain/models/product.dart';
+import '../../providers/inventory_provider.dart';
 
 class NavigationNotifier extends Notifier<String> {
   @override
@@ -51,12 +57,111 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   @override
   void initState() {
     super.initState();
+    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _tryAutoConnectPrinter();
       _checkSubscriptionAlert();
       _pingLastSeen();
     });
+  }
+
+  bool _handleKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.digit1 || event.logicalKey == LogicalKeyboardKey.numpad1) { _processInstantKey('1'); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.digit2 || event.logicalKey == LogicalKeyboardKey.numpad2) { _processInstantKey('2'); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.digit3 || event.logicalKey == LogicalKeyboardKey.numpad3) { _processInstantKey('3'); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.digit4 || event.logicalKey == LogicalKeyboardKey.numpad4) { _processInstantKey('4'); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.digit5 || event.logicalKey == LogicalKeyboardKey.numpad5) { _processInstantKey('5'); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.digit6 || event.logicalKey == LogicalKeyboardKey.numpad6) { _processInstantKey('6'); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.digit7 || event.logicalKey == LogicalKeyboardKey.numpad7) { _processInstantKey('7'); return true; }
+    }
+    return false;
+  }
+
+  void _processInstantKey(String key) async {
+    final allProducts = ref.read(inventoryProvider);
+    Product? targetProduct;
+    switch (key) {
+      case '1': targetProduct = allProducts.where((p) => p.name.contains('Coffee') && !p.name.contains('Parcel')).firstOrNull; break;
+      case '2': targetProduct = allProducts.where((p) => p.name.contains('Single Tea')).firstOrNull; break;
+      case '3': targetProduct = allProducts.where((p) => p.name.contains('Ginger Tea')).firstOrNull; break;
+      case '4': targetProduct = allProducts.where((p) => p.name == 'Parcel Tea').firstOrNull; break;
+      case '5': targetProduct = allProducts.where((p) => p.name.contains('Parcel Coffee')).firstOrNull; break;
+      case '6': targetProduct = allProducts.where((p) => p.name.contains('Cool Drink Small')).firstOrNull; break;
+      case '7': targetProduct = allProducts.where((p) => p.name.contains('Water Bottle 10')).firstOrNull; break;
+    }
+
+    if (targetProduct != null) {
+      final orderNotifier = ref.read(orderProvider.notifier);
+      final newOrderId = orderNotifier.generateNextOrderId();
+      final session = ref.read(authProvider);
+      final staffName = session?.name ?? 'Admin';
+      
+      final cartItem = CartItem(product: targetProduct, quantity: 1);
+
+      await orderNotifier.saveOrder(
+        items: [cartItem],
+        total: targetProduct.price,
+        subtotal: targetProduct.price,
+        tax: 0,
+        discount: 0,
+        paymentMode: 'CASH',
+        paymentStatus: 'PAID',
+        customerName: '',
+        customerPhone: '',
+        staffName: staffName,
+        orderType: 'DINE',
+        dineTableNo: '',
+        id: newOrderId,
+      );
+
+      final settings = ref.read(settingsProvider);
+      final receiptBytes = await PrinterService.generateReceiptBytes(
+        items: [cartItem],
+        subtotal: targetProduct.price,
+        tax: 0,
+        discount: 0,
+        total: targetProduct.price,
+        shopName: settings.shopName,
+        receiptHeader: settings.receiptHeader,
+        receiptFooter: settings.receiptFooter,
+        showGstOnReceipt: settings.showGstOnReceipt,
+        gstNumber: settings.gstNumber,
+        isUnpaid: false,
+        orderId: newOrderId,
+        tableNo: '',
+        orderType: 'DINE',
+        customerName: '',
+        customerPhone: '',
+        printAsImage: settings.printAsImage,
+        is80mmPaper: settings.is80mmPaper,
+        parcelToken: null,
+        addressLine1: settings.addressLine1,
+        addressLine2: settings.addressLine2,
+        hotelType: settings.hotelType,
+        mobileNumber: settings.mobileNumber,
+        fssaiNumber: settings.fssaiNumber,
+        enableAddressOnReceipt: settings.enableAddressOnReceipt,
+        enableMobileOnReceipt: settings.enableMobileOnReceipt,
+        enableFssaiOnReceipt: settings.enableFssaiOnReceipt,
+        enableHotelTypeOnReceipt: settings.enableHotelTypeOnReceipt,
+      );
+
+      if (receiptBytes != null) {
+        await ref.read(printerProvider.notifier).printReceipt(receiptBytes);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Printed: \${targetProduct.name}'),
+            backgroundColor: Colors.green,
+            duration: const Duration(milliseconds: 1000),
+          )
+        );
+      }
+    }
   }
 
   /// Tells Firestore this shop is active right now — powers the Live Network Pulse on master admin dashboard.
@@ -69,6 +174,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

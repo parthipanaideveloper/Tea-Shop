@@ -11,7 +11,11 @@ class ImageUtils {
     if (_cache.containsKey(imgPath)) return _cache[imgPath];
 
     try {
-      if (imgPath.startsWith('/') ||
+      if (imgPath.startsWith('http://') || imgPath.startsWith('https://')) {
+        final provider = NetworkImage(imgPath);
+        _cache[imgPath] = provider;
+        return provider;
+      } else if (imgPath.startsWith('/') ||
           imgPath.startsWith('C:') ||
           imgPath.contains('\\')) {
         final provider = FileImage(File(imgPath));
