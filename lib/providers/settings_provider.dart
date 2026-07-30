@@ -692,6 +692,18 @@ class SettingsNotifier extends Notifier<SettingsState> {
       ref.read(cartProvider.notifier).refreshTaxRate();
     }
   }
+
+  Future<void> resetSettings() async {
+    final box = Hive.box<String>('settings');
+    await box.clear();
+    state = SettingsState(
+      shopName: 'My Restaurant',
+      upiId: '',
+      gstNumber: '',
+      taxRate: 5.0,
+    );
+    FirebaseSyncService().pushSettingsSync();
+  }
 }
 
 final settingsProvider = NotifierProvider<SettingsNotifier, SettingsState>(() {

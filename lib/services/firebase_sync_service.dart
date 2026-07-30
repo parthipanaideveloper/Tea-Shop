@@ -943,28 +943,39 @@ class FirebaseSyncService {
       if (inputHash != storedHash) return 'Incorrect password';
 
       // Master Admin Host devices are completely immune/ignored for normal shop device limits
+      // Master Admin Host devices are completely immune/ignored for normal shop device limits
       final box = Hive.box<String>('settings');
       final isHostDevice = box.get('isHostDevice') == 'true' ||
-          box.get('is_impersonating') == 'true';
+          box.get('is_impersonating') == 'true' ||
+          box.get('shopCode') == 'host_admin';
 
       if (!isHostDevice) {
-        // Check device list for normal shop admins
+        // Check device list for normal shop admins (deduplicated by deviceId)
         final List<dynamic> rawDevices = data['adminDevices'] ?? [];
         final List<Map<String, dynamic>> devices = rawDevices
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
 
-        final alreadyRegistered = devices.any((d) => d['deviceId'] == deviceId);
+        final Map<String, Map<String, dynamic>> uniqueDevicesMap = {};
+        for (var d in devices) {
+          final dId = d['deviceId']?.toString() ?? '';
+          if (dId.isNotEmpty && !uniqueDevicesMap.containsKey(dId)) {
+            uniqueDevicesMap[dId] = d;
+          }
+        }
+        final uniqueDevices = uniqueDevicesMap.values.toList();
+
+        final alreadyRegistered = uniqueDevices.any((d) => d['deviceId'] == deviceId);
         if (alreadyRegistered) {
-          final deviceData = devices.firstWhere((d) => d['deviceId'] == deviceId);
+          final deviceData = uniqueDevices.firstWhere((d) => d['deviceId'] == deviceId);
           if (deviceData['isBlocked'] == true) {
             return 'Your admin device has been blocked by the main host.';
           }
         } else {
-          if (devices.length >= 3) {
+          if (uniqueDevices.length >= 3) {
             // Notify the first registered device
-            final firstDevice = devices.isNotEmpty
-                ? devices.first['deviceId']
+            final firstDevice = uniqueDevices.isNotEmpty
+                ? uniqueDevices.first['deviceId']
                 : null;
             await shopRef.set({
               'loginAlerts': FieldValue.arrayUnion([
@@ -978,15 +989,14 @@ class FirebaseSyncService {
             }, SetOptions(merge: true));
             return 'max_devices_reached';
           }
-          // Register the new device
+          // Register the new device and update deduplicated list
+          uniqueDevices.add({
+            'deviceId': deviceId,
+            'shopCode': shopCode.trim(),
+            'registeredAt': DateTime.now().toIso8601String(),
+          });
           await shopRef.set({
-            'adminDevices': FieldValue.arrayUnion([
-              {
-                'deviceId': deviceId,
-                'shopCode': shopCode.trim(),
-                'registeredAt': DateTime.now().toIso8601String(),
-              },
-            ]),
+            'adminDevices': uniqueDevices,
           }, SetOptions(merge: true));
         }
       }
@@ -1018,7 +1028,8 @@ class FirebaseSyncService {
 
       final box = Hive.box<String>('settings');
       final isHostDevice = box.get('isHostDevice') == 'true' ||
-          box.get('is_impersonating') == 'true';
+          box.get('is_impersonating') == 'true' ||
+          box.get('shopCode') == 'host_admin';
 
       if (isHostDevice) {
         // Master Admin device: Only update password hash, DO NOT register deviceId in shop's adminDevices array
@@ -1026,15 +1037,28 @@ class FirebaseSyncService {
           'adminPasswordHash': encodedPassword,
         }, SetOptions(merge: true));
       } else {
+        final doc = await shopRef.get();
+        final rawDevices = (doc.data()?['adminDevices'] as List?) ?? [];
+        final List<Map<String, dynamic>> devices = rawDevices
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+
+        final Map<String, Map<String, dynamic>> uniqueMap = {};
+        for (var d in devices) {
+          final dId = d['deviceId']?.toString() ?? '';
+          if (dId.isNotEmpty) {
+            uniqueMap[dId] = d;
+          }
+        }
+        uniqueMap[deviceId] = {
+          'deviceId': deviceId,
+          'shopCode': shopCode.trim(),
+          'registeredAt': DateTime.now().toIso8601String(),
+        };
+
         await shopRef.set({
           'adminPasswordHash': encodedPassword,
-          'adminDevices': FieldValue.arrayUnion([
-            {
-              'deviceId': deviceId,
-              'shopCode': shopCode.trim(),
-              'registeredAt': DateTime.now().toIso8601String(),
-            },
-          ]),
+          'adminDevices': uniqueMap.values.toList(),
         }, SetOptions(merge: true));
       }
     } catch (e) {

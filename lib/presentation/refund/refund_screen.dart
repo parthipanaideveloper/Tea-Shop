@@ -378,7 +378,7 @@ class _RefundDialogState extends ConsumerState<RefundDialog> {
       final originalItem = widget.order.parsedItems.firstWhere(
         (i) => i.product.id == productId,
       );
-      totalRefundAmount += originalItem.product.price * returnQty;
+      totalRefundAmount += originalItem.effectivePrice(widget.order.orderType) * returnQty;
       refundedItemNames.add('${originalItem.product.name} x$returnQty');
     }
 
@@ -493,7 +493,7 @@ class _RefundDialogState extends ConsumerState<RefundDialog> {
                       // Recalculate totals
                       final double newSubtotal = updatedItems.fold(
                         0.0,
-                        (sum, i) => sum + i.total,
+                        (sum, i) => sum + i.effectiveTotal(widget.order.orderType),
                       );
                       final double newTax =
                           newSubtotal *

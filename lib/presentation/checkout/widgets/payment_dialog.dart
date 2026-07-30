@@ -766,7 +766,7 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
 
     // 3. Printing & Background tasks
     Future.microtask(() async {
-
+      try {
         List<int>? kitchenBytes;
         List<int>? receiptBytes;
 
@@ -845,7 +845,6 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
         }
 
         // 2. Fire and Forget Secondary Printers (Background)
-        // This runs even if the main printer fails!
         if (settings.enableKotReceipt && settings.enableMultiplePrinters) {
           PrintRouterService.routeKOTs(
             items: finalCart.items,
@@ -870,7 +869,5 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
         }
       }
     });
-
-
   }
 }
