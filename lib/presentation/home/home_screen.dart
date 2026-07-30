@@ -43,6 +43,8 @@ class NavigationNotifier extends Notifier<String> {
 }
 final globalNavigationProvider = NotifierProvider<NavigationNotifier, String>(() => NavigationNotifier());
 
+enum NumpadState { awaitingItem, awaitingQuantity }
+
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -53,6 +55,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
   final List<String> _navigationHistory = ['overview'];
   bool _hasAttemptedAutoConnect = false;
+  NumpadState _numpadState = NumpadState.awaitingItem;
+  Product? _selectedProduct;
 
   @override
   void initState() {
@@ -69,54 +73,189 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   bool _handleKeyEvent(KeyEvent event) {
     if (event is KeyDownEvent) {
       final char = event.character;
-      if (char == '1' || event.logicalKey == LogicalKeyboardKey.digit1 || event.logicalKey == LogicalKeyboardKey.numpad1) { _processInstantKey('1'); return true; }
-      if (char == '2' || event.logicalKey == LogicalKeyboardKey.digit2 || event.logicalKey == LogicalKeyboardKey.numpad2) { _processInstantKey('2'); return true; }
-      if (char == '3' || event.logicalKey == LogicalKeyboardKey.digit3 || event.logicalKey == LogicalKeyboardKey.numpad3) { _processInstantKey('3'); return true; }
-      if (char == '4' || event.logicalKey == LogicalKeyboardKey.digit4 || event.logicalKey == LogicalKeyboardKey.numpad4) { _processInstantKey('4'); return true; }
-      if (char == '5' || event.logicalKey == LogicalKeyboardKey.digit5 || event.logicalKey == LogicalKeyboardKey.numpad5) { _processInstantKey('5'); return true; }
-      if (char == '6' || event.logicalKey == LogicalKeyboardKey.digit6 || event.logicalKey == LogicalKeyboardKey.numpad6) { _processInstantKey('6'); return true; }
-      if (char == '7' || event.logicalKey == LogicalKeyboardKey.digit7 || event.logicalKey == LogicalKeyboardKey.numpad7) { _processInstantKey('7'); return true; }
+      
+      // Enter Key
+      if (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+        _processInstantKey('Enter');
+        return true;
+      }
+      
+      // Clear/Reset Key (Backspace or 0)
+      if (event.logicalKey == LogicalKeyboardKey.backspace || char == '0' || event.logicalKey == LogicalKeyboardKey.digit0 || event.logicalKey == LogicalKeyboardKey.numpad0) {
+        _processInstantKey('Clear');
+        return true;
+      }
+
+      // Check digits 1-9
+      if (char != null && char.length == 1 && int.tryParse(char) != null && char != '0') {
+         _processInstantKey(char);
+         return true;
+      }
+
+      // Fallback for logical keys if character is null
+      if (event.logicalKey == LogicalKeyboardKey.digit1 || event.logicalKey == LogicalKeyboardKey.numpad1) { _processInstantKey('1'); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.digit2 || event.logicalKey == LogicalKeyboardKey.numpad2) { _processInstantKey('2'); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.digit3 || event.logicalKey == LogicalKeyboardKey.numpad3) { _processInstantKey('3'); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.digit4 || event.logicalKey == LogicalKeyboardKey.numpad4) { _processInstantKey('4'); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.digit5 || event.logicalKey == LogicalKeyboardKey.numpad5) { _processInstantKey('5'); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.digit6 || event.logicalKey == LogicalKeyboardKey.numpad6) { _processInstantKey('6'); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.digit7 || event.logicalKey == LogicalKeyboardKey.numpad7) { _processInstantKey('7'); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.digit8 || event.logicalKey == LogicalKeyboardKey.numpad8) { _processInstantKey('8'); return true; }
+      if (event.logicalKey == LogicalKeyboardKey.digit9 || event.logicalKey == LogicalKeyboardKey.numpad9) { _processInstantKey('9'); return true; }
     }
     return false;
   }
 
   void _processInstantKey(String key) async {
-    final allProducts = ref.read(inventoryProvider);
-    Product? targetProduct;
-    switch (key) {
-      case '1': targetProduct = allProducts.where((p) => p.name.contains('Coffee') && !p.name.contains('Parcel')).firstOrNull; break;
-      case '2': targetProduct = allProducts.where((p) => p.name.contains('Single Tea')).firstOrNull; break;
-      case '3': targetProduct = allProducts.where((p) => p.name.contains('Ginger Tea')).firstOrNull; break;
-      case '4': targetProduct = allProducts.where((p) => p.name == 'Parcel Tea').firstOrNull; break;
-      case '5': targetProduct = allProducts.where((p) => p.name.contains('Parcel Coffee')).firstOrNull; break;
-      case '6': targetProduct = allProducts.where((p) => p.name.contains('Cool Drink Small')).firstOrNull; break;
-      case '7': targetProduct = allProducts.where((p) => p.name.contains('Water Bottle 10')).firstOrNull; break;
+    if (key == 'Clear') {
+       _numpadState = NumpadState.awaitingItem;
+       _selectedProduct = null;
+       ref.read(cartProvider.notifier).clearCart();
+       if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cart Cleared!'), backgroundColor: Colors.red));
+       }
+       return;
     }
 
-    if (targetProduct != null) {
-      // Add to cart
-      ref.read(cartProvider.notifier).addProduct(targetProduct);
-      
-      // Ensure we are on the Checkout screen
-      final currentRoute = ref.read(globalNavigationProvider);
-      if (currentRoute != 'checkout') {
-         ref.read(globalNavigationProvider.notifier).state = 'checkout';
-         setState(() {
-           _navigationHistory.remove('checkout');
-           _navigationHistory.add('checkout');
-         });
+    if (key == 'Enter') {
+       _processCheckoutAndPrint();
+       return;
+    }
+
+    // It's a number key (1-9)
+    if (_numpadState == NumpadState.awaitingItem) {
+        final allProducts = ref.read(inventoryProvider);
+        Product? targetProduct;
+        switch (key) {
+          case '1': targetProduct = allProducts.where((p) => p.name.contains('Coffee') && !p.name.contains('Parcel')).firstOrNull; break;
+          case '2': targetProduct = allProducts.where((p) => p.name.contains('Single Tea')).firstOrNull; break;
+          case '3': targetProduct = allProducts.where((p) => p.name.contains('Ginger Tea')).firstOrNull; break;
+          case '4': targetProduct = allProducts.where((p) => p.name == 'Parcel Tea').firstOrNull; break;
+          case '5': targetProduct = allProducts.where((p) => p.name.contains('Parcel Coffee')).firstOrNull; break;
+          case '6': targetProduct = allProducts.where((p) => p.name.contains('Cool Drink Small')).firstOrNull; break;
+          case '7': targetProduct = allProducts.where((p) => p.name.contains('Water Bottle 10')).firstOrNull; break;
+        }
+
+        if (targetProduct != null) {
+            _selectedProduct = targetProduct;
+            _numpadState = NumpadState.awaitingQuantity;
+            if (mounted) {
+               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('\${targetProduct.name} Selected. Enter Quantity.'), backgroundColor: Colors.orange, duration: const Duration(milliseconds: 1000)));
+            }
+        }
+    } else if (_numpadState == NumpadState.awaitingQuantity) {
+        int? qty = int.tryParse(key);
+        if (qty != null && qty > 0 && _selectedProduct != null) {
+            // Add to cart N times
+            for (int i = 0; i < qty; i++) {
+               ref.read(cartProvider.notifier).addProduct(_selectedProduct!);
+            }
+            
+            // Ensure we are on Checkout screen
+            final currentRoute = ref.read(globalNavigationProvider);
+            if (currentRoute != 'checkout') {
+               ref.read(globalNavigationProvider.notifier).state = 'checkout';
+               setState(() {
+                 _navigationHistory.remove('checkout');
+                 _navigationHistory.add('checkout');
+               });
+            }
+
+            if (mounted) {
+               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Added $qty x \${_selectedProduct!.name}'), backgroundColor: Colors.blueAccent, duration: const Duration(milliseconds: 1000)));
+            }
+            
+            // Reset state for next item
+            _selectedProduct = null;
+            _numpadState = NumpadState.awaitingItem;
+        }
+    }
+  }
+
+  Future<void> _processCheckoutAndPrint() async {
+      final cart = ref.read(cartProvider);
+      if (cart.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cart is empty!'), backgroundColor: Colors.red));
+        }
+        return;
       }
+
+      final orderNotifier = ref.read(orderProvider.notifier);
+      final newOrderId = orderNotifier.generateNextOrderId();
+      final session = ref.read(authProvider);
+      final staffName = session?.name ?? 'Admin';
+      
+      final subtotal = ref.read(cartProvider.notifier).subtotal;
+      
+      // Save order
+      await orderNotifier.saveOrder(
+        items: cart,
+        total: subtotal,
+        subtotal: subtotal,
+        tax: 0,
+        discount: 0,
+        paymentMode: 'CASH',
+        paymentStatus: 'PAID',
+        customerName: '',
+        customerPhone: '',
+        staffName: staffName,
+        orderType: 'DINE',
+        dineTableNo: '',
+        id: newOrderId,
+      );
+
+      // Print Simple Receipt
+      final settings = ref.read(settingsProvider);
+      final receiptBytes = await PrinterService.generateReceiptBytes(
+        items: cart,
+        subtotal: subtotal,
+        tax: 0,
+        discount: 0,
+        total: subtotal,
+        shopName: settings.shopName,
+        receiptHeader: '',
+        receiptFooter: '',
+        showGstOnReceipt: false,
+        gstNumber: '',
+        isUnpaid: false,
+        orderId: newOrderId,
+        tableNo: '',
+        orderType: 'DINE',
+        customerName: '',
+        customerPhone: '',
+        printAsImage: settings.printAsImage,
+        is80mmPaper: settings.is80mmPaper,
+        parcelToken: null,
+        addressLine1: '',
+        addressLine2: '',
+        hotelType: '',
+        mobileNumber: '',
+        fssaiNumber: '',
+        enableAddressOnReceipt: false,
+        enableMobileOnReceipt: false,
+        enableFssaiOnReceipt: false,
+        enableHotelTypeOnReceipt: false,
+      );
+
+      if (receiptBytes != null) {
+        await ref.read(printerProvider.notifier).printReceipt(receiptBytes);
+      }
+
+      // Reset everything
+      ref.read(cartProvider.notifier).clearCart();
+      _numpadState = NumpadState.awaitingItem;
+      _selectedProduct = null;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Added \${targetProduct.name} to Cart'),
-            backgroundColor: Colors.blueAccent,
-            duration: const Duration(milliseconds: 500),
+          const SnackBar(
+            content: Text('Order Checked Out & Printed!'),
+            backgroundColor: Colors.green,
+            duration: Duration(milliseconds: 1500),
           )
         );
       }
-    }
   }
 
   /// Tells Firestore this shop is active right now — powers the Live Network Pulse on master admin dashboard.
