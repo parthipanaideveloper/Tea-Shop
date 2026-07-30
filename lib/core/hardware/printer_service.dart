@@ -1275,8 +1275,8 @@ class PrinterService {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          const Divider(color: Colors.black, thickness: 1.5),
+          SizedBox(height: 2 * scale),
+          Container(height: 1.5 * scale, color: Colors.black, margin: EdgeInsets.symmetric(vertical: 2 * scale)),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1314,7 +1314,7 @@ class PrinterService {
                 ),
               ),
             ),
-          const Divider(color: Colors.black, thickness: 1.5),
+          Container(height: 1.5 * scale, color: Colors.black, margin: EdgeInsets.symmetric(vertical: 2 * scale)),
 
           Row(
             children: [
@@ -1361,7 +1361,7 @@ class PrinterService {
               ),
             ],
           ),
-          const Divider(color: Colors.black, thickness: 1.5),
+          Container(height: 1.5 * scale, color: Colors.black, margin: EdgeInsets.symmetric(vertical: 2 * scale)),
 
           ...items.map((item) {
             final name = item.product.name;
@@ -1372,7 +1372,7 @@ class PrinterService {
                 : name;
 
             return Padding(
-              padding: const EdgeInsets.only(bottom: 6.0),
+              padding: EdgeInsets.only(bottom: 2 * scale),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -1437,7 +1437,7 @@ class PrinterService {
             );
           }).toList(),
 
-          const Divider(color: Colors.black, thickness: 1.5),
+          Container(height: 1.5 * scale, color: Colors.black, margin: EdgeInsets.symmetric(vertical: 2 * scale)),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1505,25 +1505,15 @@ class PrinterService {
               ],
             ),
 
-          const Divider(color: Colors.black, thickness: 1.5),
+          Container(height: 1.5 * scale, color: Colors.black, margin: EdgeInsets.symmetric(vertical: 2 * scale)),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              if (orderType != null)
-                Text(
-                  orderType.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 22 * scale,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                    fontFamily: GoogleFonts.notoSansTamil().fontFamily,
-                  ),
-                ),
               Text(
-                'TOTAL',
+                orderType != null ? orderType.toUpperCase() : 'TOTAL',
                 style: TextStyle(
-                  fontSize: 22 * scale,
+                  fontSize: 20 * scale,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                   fontFamily: GoogleFonts.notoSansTamil().fontFamily,
@@ -1532,7 +1522,7 @@ class PrinterService {
               Text(
                 'Rs. ${total.toStringAsFixed(2)}',
                 style: TextStyle(
-                  fontSize: 24 * scale,
+                  fontSize: 20 * scale,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                   fontFamily: GoogleFonts.notoSansTamil().fontFamily,
@@ -1541,7 +1531,7 @@ class PrinterService {
             ],
           ),
 
-          const Divider(color: Colors.black, thickness: 1.5),
+          Container(height: 1.5 * scale, color: Colors.black, margin: EdgeInsets.symmetric(vertical: 2 * scale)),
           if (receiptFooter.isNotEmpty)
             Center(
               child: Text(
