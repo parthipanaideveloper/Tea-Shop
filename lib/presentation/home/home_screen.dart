@@ -126,13 +126,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         final allProducts = ref.read(inventoryProvider);
         Product? targetProduct;
         switch (key) {
-          case '1': targetProduct = allProducts.where((p) => p.name.contains('Coffee') && !p.name.contains('Parcel')).firstOrNull; break;
-          case '2': targetProduct = allProducts.where((p) => p.name.contains('Single Tea')).firstOrNull; break;
-          case '3': targetProduct = allProducts.where((p) => p.name.contains('Ginger Tea')).firstOrNull; break;
-          case '4': targetProduct = allProducts.where((p) => p.name == 'Parcel Tea').firstOrNull; break;
-          case '5': targetProduct = allProducts.where((p) => p.name.contains('Parcel Coffee')).firstOrNull; break;
-          case '6': targetProduct = allProducts.where((p) => p.name.contains('Cool Drink Small')).firstOrNull; break;
-          case '7': targetProduct = allProducts.where((p) => p.name.contains('Water Bottle 10')).firstOrNull; break;
+          case '1': targetProduct = allProducts.where((p) => p.name.contains('Single Tea')).firstOrNull; break;
+          case '2': targetProduct = allProducts.where((p) => p.name == 'Parcel Tea').firstOrNull; break;
+          case '3': targetProduct = allProducts.where((p) => p.name.contains('Coffee') && !p.name.contains('Parcel')).firstOrNull; break;
+          case '4': targetProduct = allProducts.where((p) => p.name.contains('Parcel Coffee')).firstOrNull; break;
+          case '5': targetProduct = allProducts.where((p) => p.name.contains('Ginger Tea')).firstOrNull; break;
+          case '6': targetProduct = allProducts.where((p) => p.name.contains('Cigarette')).firstOrNull; break;
+          case '7': targetProduct = allProducts.where((p) => p.name.contains('Cool Drink')).firstOrNull; break;
+          case '8': targetProduct = allProducts.where((p) => p.name.contains('Water Bottle')).firstOrNull; break;
         }
 
         if (targetProduct != null) {
