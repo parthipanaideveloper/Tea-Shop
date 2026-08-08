@@ -20,6 +20,31 @@ class InventoryNotifier extends Notifier<List<Product>> {
           FirebaseSyncService().pushProduct(updatedProduct);
         }
       }
+      
+      // MIGRATION: Update product numbers to 1-16
+      final updates = <String, Product>{};
+      for (final p in box.values) {
+         if (p.name.contains('Single Tea') && p.price == 10 && p.productNumber != '1') updates[p.id] = p.copyWith(productNumber: '1');
+         else if (p.name.contains('Parcel Tea') && p.price == 40 && p.productNumber != '2') updates[p.id] = p.copyWith(productNumber: '2');
+         else if (p.name.contains('Parcel Tea') && p.price == 50 && p.productNumber != '3') updates[p.id] = p.copyWith(productNumber: '3');
+         else if (p.name.contains('Coffee') && !p.name.contains('Parcel') && p.price == 20 && p.productNumber != '4') updates[p.id] = p.copyWith(productNumber: '4');
+         else if (p.name.contains('Parcel Coffee') && p.price == 50 && p.productNumber != '5') updates[p.id] = p.copyWith(productNumber: '5');
+         else if (p.name.contains('Ginger Tea') && p.price == 20 && p.productNumber != '6') updates[p.id] = p.copyWith(productNumber: '6');
+         else if (p.name.contains('Cigarette') && p.price == 10 && p.productNumber != '7') updates[p.id] = p.copyWith(productNumber: '7');
+         else if (p.name.contains('Cigarette') && p.price == 12 && p.productNumber != '8') updates[p.id] = p.copyWith(productNumber: '8');
+         else if (p.name.contains('Cigarette') && p.price == 15 && p.productNumber != '9') updates[p.id] = p.copyWith(productNumber: '9');
+         else if (p.name.contains('Cigarette') && p.price == 25 && p.productNumber != '10') updates[p.id] = p.copyWith(productNumber: '10');
+         else if (p.name.contains('Cool Drink') && p.price == 10 && p.productNumber != '11') updates[p.id] = p.copyWith(productNumber: '11');
+         else if (p.name.contains('Cool Drink') && p.price == 15 && p.productNumber != '12') updates[p.id] = p.copyWith(productNumber: '12');
+         else if (p.name.contains('Cool Drink') && p.price == 20 && p.productNumber != '13') updates[p.id] = p.copyWith(productNumber: '13');
+         else if (p.name.contains('Water Bottle') && p.price == 10 && p.productNumber != '14') updates[p.id] = p.copyWith(productNumber: '14');
+         else if (p.name.contains('Water Bottle') && p.price == 20 && p.productNumber != '15') updates[p.id] = p.copyWith(productNumber: '15');
+         else if (p.name.contains('Water Bottle') && p.price == 30 && p.productNumber != '16') updates[p.id] = p.copyWith(productNumber: '16');
+      }
+      for (final id in updates.keys) {
+         box.put(id, updates[id]!);
+         FirebaseSyncService().pushProduct(updates[id]!);
+      }
     });
 
     // Listen to Hive changes for two-way sync

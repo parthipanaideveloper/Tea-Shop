@@ -304,7 +304,7 @@ class DashboardScreen extends ConsumerWidget {
     final isDesktop = MediaQuery.of(context).size.width >= 800;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey.shade50,
       appBar: isMasterAdmin
           ? AppBar(
               title: Text('Master Admin Dashboard'.tr(ref.watch(languageProvider))),
@@ -603,7 +603,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class _RowMenuCard extends StatelessWidget {
+class _RowMenuCard extends StatefulWidget {
   final String title;
   final IconData icon;
   final List<Color> colors;
@@ -617,26 +617,55 @@ class _RowMenuCard extends StatelessWidget {
   });
 
   @override
+  State<_RowMenuCard> createState() => _RowMenuCardState();
+}
+
+class _RowMenuCardState extends State<_RowMenuCard> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.97).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 90,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: colors,
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight),
-        boxShadow: [
-          BoxShadow(
-            color: colors.first.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4)),
-        ]),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Container(
+          height: 90,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: widget.colors.first.withOpacity(0.12),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Row(
@@ -644,27 +673,49 @@ class _RowMenuCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    shape: BoxShape.circle),
-                  child: Icon(icon, color: Colors.white, size: 28)),
+                    gradient: LinearGradient(
+                      colors: [
+                        widget.colors.first.withOpacity(0.15),
+                        widget.colors.last.withOpacity(0.05),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    widget.icon,
+                    color: widget.colors.first,
+                    size: 28,
+                  ),
+                ),
                 const SizedBox(width: 20),
                 Expanded(
                   child: Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    widget.title,
+                    style: TextStyle(
+                      color: Colors.grey.shade800,
                       fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5))),
-                const Icon(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+                Icon(
                   Icons.arrow_forward_ios,
-                  color: Colors.white70,
-                  size: 20),
-              ])))));
+                  color: Colors.grey.shade400,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
-class _SquareMenuCard extends StatelessWidget {
+class _SquareMenuCard extends StatefulWidget {
   final String title;
   final IconData icon;
   final List<Color> colors;
@@ -678,48 +729,98 @@ class _SquareMenuCard extends StatelessWidget {
   });
 
   @override
+  State<_SquareMenuCard> createState() => _SquareMenuCardState();
+}
+
+class _SquareMenuCardState extends State<_SquareMenuCard> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: colors,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight),
-        boxShadow: [
-          BoxShadow(
-            color: colors.first.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4)),
-        ]),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: widget.colors.first.withOpacity(0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(20.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    shape: BoxShape.circle),
-                  child: Icon(icon, color: Colors.white, size: 36)),
-                const SizedBox(height: 12),
+                    gradient: LinearGradient(
+                      colors: [
+                        widget.colors.first.withOpacity(0.15),
+                        widget.colors.last.withOpacity(0.05),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    widget.icon,
+                    color: widget.colors.first,
+                    size: 38,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    title,
+                    widget.title,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: Colors.grey.shade800,
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5))),
-              ])))));
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

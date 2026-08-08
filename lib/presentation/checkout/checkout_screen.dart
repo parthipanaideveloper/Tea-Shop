@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:pos/core/utils/notification_helper.dart';
 import 'dart:io';
 import 'dart:convert';
@@ -34,6 +35,7 @@ final GlobalKey<_CartPreviewState> globalCartPreviewKey =
     GlobalKey<_CartPreviewState>();
 final GlobalKey<_ProductPickerState> globalProductPickerKey =
     GlobalKey<_ProductPickerState>();
+final GlobalKey globalCalculatorKey = GlobalKey();
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   final VoidCallback? onBackToHome;
@@ -125,7 +127,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                 ),
                                 const SizedBox(height: 12),
                                 Expanded(
-                                  child: _CartPreview(isMobileSheet: true),
+                                  child: _CartPreview(
+                                    key: globalCartPreviewKey,
+                                    isMobileSheet: true,
+                                  ),
                                 ),
                               ],
                             ),
@@ -258,6 +263,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                               const SizedBox(height: 12),
                                               Expanded(
                                                 child: _CartPreview(
+                                                  key: globalCartPreviewKey,
                                                   isMobileSheet: true,
                                                 ),
                                               ),
@@ -382,6 +388,8 @@ class _ProductPickerState extends ConsumerState<_ProductPicker>
   final _searchQuery = ValueNotifier<String>('');
   final TextEditingController _searchCtrl = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  
+  List<Product> _currentSortedProducts = [];
 
   @override
   void initState() {
@@ -389,12 +397,272 @@ class _ProductPickerState extends ConsumerState<_ProductPicker>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       focusSearch();
     });
+    HardwareKeyboard.instance.addHandler(_handleKeyEvent);
   }
 
   void focusSearch() {
     if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
       _searchFocusNode.requestFocus();
     }
+  }
+
+  final ValueNotifier<String> _keypadBufferNotifier = ValueNotifier<String>('');
+  Timer? _keypadTimer;
+
+  bool _handleKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent) {
+      String key = event.logicalKey.keyLabel;
+      final isAsterisk = event.logicalKey == LogicalKeyboardKey.asterisk || event.logicalKey == LogicalKeyboardKey.numpadMultiply || key == '*' || key == 'x' || key == 'X';
+
+      if (event.logicalKey == LogicalKeyboardKey.digit0 || event.logicalKey == LogicalKeyboardKey.numpad0) key = '0';
+      else if (event.logicalKey == LogicalKeyboardKey.digit1 || event.logicalKey == LogicalKeyboardKey.numpad1) key = '1';
+      else if (event.logicalKey == LogicalKeyboardKey.digit2 || event.logicalKey == LogicalKeyboardKey.numpad2) key = '2';
+      else if (event.logicalKey == LogicalKeyboardKey.digit3 || event.logicalKey == LogicalKeyboardKey.numpad3) key = '3';
+      else if (event.logicalKey == LogicalKeyboardKey.digit4 || event.logicalKey == LogicalKeyboardKey.numpad4) key = '4';
+      else if (event.logicalKey == LogicalKeyboardKey.digit5 || event.logicalKey == LogicalKeyboardKey.numpad5) key = '5';
+      else if (event.logicalKey == LogicalKeyboardKey.digit6 || event.logicalKey == LogicalKeyboardKey.numpad6) key = '6';
+      else if (event.logicalKey == LogicalKeyboardKey.digit7 || event.logicalKey == LogicalKeyboardKey.numpad7) key = '7';
+      else if (event.logicalKey == LogicalKeyboardKey.digit8 || event.logicalKey == LogicalKeyboardKey.numpad8) key = '8';
+      else if (event.logicalKey == LogicalKeyboardKey.digit9 || event.logicalKey == LogicalKeyboardKey.numpad9) key = '9';
+
+      final cartPreview = globalCartPreviewKey.currentState;
+
+      // Cart Navigation via PgUp (9) and PgDn (3)
+      if (event.logicalKey == LogicalKeyboardKey.pageUp || event.logicalKey == LogicalKeyboardKey.numpad9) {
+          if (cartPreview != null && _keypadBufferNotifier.value.isEmpty) {
+              cartPreview.moveHighlightUp();
+              return true;
+          }
+      }
+      if (event.logicalKey == LogicalKeyboardKey.pageDown || event.logicalKey == LogicalKeyboardKey.numpad3) {
+          if (cartPreview != null && _keypadBufferNotifier.value.isEmpty) {
+              cartPreview.moveHighlightDown();
+              return true;
+          }
+      }
+
+      if (event.logicalKey == LogicalKeyboardKey.minus || event.logicalKey == LogicalKeyboardKey.numpadSubtract || event.logicalKey.keyLabel == '-') {
+         if (cartPreview != null && cartPreview.hasHighlightedItem()) {
+            cartPreview.decreaseHighlightedQuantity(ref);
+            return true;
+         }
+         return _processKeypadInput('-');
+      }
+
+      if (cartPreview != null && cartPreview.isSplitFocused) {
+          if (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+             return cartPreview.handleSplitKeypadEnter();
+          }
+          if (RegExp(r'^[0-9]$').hasMatch(key) || event.logicalKey == LogicalKeyboardKey.backspace || event.logicalKey.keyLabel == '.') {
+             return false; 
+          }
+      }
+
+      if (RegExp(r'^[0-9]$').hasMatch(key)) {
+         return _processKeypadInput(key);
+      } else if (isAsterisk) {
+         return _processKeypadInput('*');
+      } else if (event.logicalKey == LogicalKeyboardKey.add || event.logicalKey == LogicalKeyboardKey.numpadAdd || event.logicalKey.keyLabel == '+') {
+         if (cartPreview != null && cartPreview.hasHighlightedItem()) {
+            cartPreview.increaseHighlightedQuantity(ref);
+            return true;
+         }
+         return _processKeypadInput('+');
+      } else if (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+         return _processKeypadInput('ENTER');
+      } else if (event.logicalKey == LogicalKeyboardKey.escape) {
+         if (cartPreview != null) cartPreview.clearHighlight();
+         return _processKeypadInput('ESCAPE');
+      } else if (event.logicalKey == LogicalKeyboardKey.backspace) {
+         return _processKeypadInput('BACKSPACE');
+      }
+    }
+    return false;
+  }
+
+  bool _processKeypadInput(String action) {
+    if (RegExp(r'^[0-9]$').hasMatch(action) || action == '*') {
+       if (action == '*') {
+          if (!_keypadBufferNotifier.value.contains('*')) {
+             _keypadBufferNotifier.value += '*';
+          }
+       } else {
+          _keypadBufferNotifier.value += action;
+       }
+
+       _keypadTimer?.cancel();
+       _keypadTimer = Timer(const Duration(milliseconds: 2500), () {
+           _keypadBufferNotifier.value = '';
+       });
+
+       final parts = _keypadBufferNotifier.value.split('*');
+       final query = parts.isNotEmpty ? parts[0] : '';
+
+       Product? matched = _currentSortedProducts.where((p) => p.productNumber?.toLowerCase() == query.toLowerCase()).firstOrNull;
+       if (matched == null && int.tryParse(query) != null) {
+          final idx = int.parse(query) - 1;
+          if (idx >= 0 && idx < _currentSortedProducts.length) {
+             matched = _currentSortedProducts[idx];
+          }
+       }
+       
+       if (matched != null) {
+          ref.read(numpadSelectedProductProvider.notifier).update(matched);
+       }
+       return true;
+    } else if (action == '+') {
+       final highlighted = ref.read(numpadSelectedProductProvider);
+       if (highlighted != null) {
+          final parts = _keypadBufferNotifier.value.split('*');
+          int quantity = 1;
+          if (parts.length > 1 && parts[1].isNotEmpty) {
+             quantity = int.tryParse(parts[1]) ?? 1;
+          }
+          if (quantity < 1) quantity = 1;
+
+          final cartNotifier = ref.read(cartProvider.notifier);
+          for (int i = 0; i < quantity; i++) {
+             cartNotifier.addProduct(highlighted);
+          }
+
+          ref.read(numpadSelectedProductProvider.notifier).update(null);
+          _keypadBufferNotifier.value = '';
+          return true; 
+       }
+       return false;
+    } else if (action == 'ENTER') {
+       // ENTER always prints — but first commit any pending item
+       final highlighted = ref.read(numpadSelectedProductProvider);
+       if (highlighted != null) {
+           final parts = _keypadBufferNotifier.value.split('*');
+           int quantity = 1;
+           if (parts.length > 1 && parts[1].isNotEmpty) {
+              quantity = int.tryParse(parts[1]) ?? 1;
+           }
+           if (quantity < 1) quantity = 1;
+
+           final cartNotifier = ref.read(cartProvider.notifier);
+           for (int i = 0; i < quantity; i++) {
+              cartNotifier.addProduct(highlighted);
+           }
+           ref.read(numpadSelectedProductProvider.notifier).update(null);
+           _keypadBufferNotifier.value = '';
+       }
+       // Now print
+       if (globalCartPreviewKey.currentState != null) {
+           globalCartPreviewKey.currentState?.triggerPayment(ref);
+       } else {
+           final cart = ref.read(cartProvider);
+           if (cart.items.isNotEmpty) {
+             processFastCheckout(
+               context: context,
+               ref: ref,
+               cart: cart,
+               settings: ref.read(settingsProvider),
+               isMobileSheet: false,
+             ).then((_) {
+               globalProductPickerKey.currentState?.focusSearch();
+             });
+           }
+       }
+       return true;
+    } else if (action == 'ESCAPE') {
+       final highlighted = ref.read(numpadSelectedProductProvider);
+       if (highlighted != null) {
+           ref.read(numpadSelectedProductProvider.notifier).update(null);
+           _keypadBufferNotifier.value = '';
+           return true;
+       }
+       return false;
+    } else if (action == '-') {
+       if (globalCartPreviewKey.currentState != null) {
+          globalCartPreviewKey.currentState?.togglePaymentMode();
+          return true;
+       } else {
+          final isDesktop = MediaQuery.of(context).size.width >= 1024;
+          if (!isDesktop) {
+             final cart = ref.read(cartProvider);
+             if (cart.items.isNotEmpty) {
+                showModalBottomSheet(
+                   context: context,
+                   isScrollControlled: true,
+                   backgroundColor: Colors.white,
+                   shape: const RoundedRectangleBorder(
+                     borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                   ),
+                   builder: (context) {
+                     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+                     return Padding(
+                       padding: EdgeInsets.only(bottom: bottomInset),
+                       child: SafeArea(
+                         child: FractionallySizedBox(
+                           heightFactor: 0.85,
+                           child: Column(
+                             children: [
+                               const SizedBox(height: 12),
+                               Container(
+                                 width: 40,
+                                 height: 5,
+                                 decoration: BoxDecoration(
+                                   color: Colors.grey.shade300,
+                                   borderRadius: BorderRadius.circular(10),
+                                 ),
+                               ),
+                               const SizedBox(height: 12),
+                               Expanded(
+                                 child: _CartPreview(
+                                   key: globalCartPreviewKey,
+                                   isMobileSheet: true,
+                                 ),
+                               ),
+                             ],
+                           ),
+                         ),
+                       ),
+                     );
+                   },
+                );
+                Future.delayed(const Duration(milliseconds: 100), () {
+                   globalCartPreviewKey.currentState?.togglePaymentMode();
+                });
+                return true;
+             }
+          }
+       }
+       return false;
+    } else if (action == 'BACKSPACE') {
+       if (_keypadBufferNotifier.value.isNotEmpty) {
+           _keypadBufferNotifier.value = _keypadBufferNotifier.value.substring(0, _keypadBufferNotifier.value.length - 1);
+           
+           _keypadTimer?.cancel();
+           if (_keypadBufferNotifier.value.isEmpty) {
+              ref.read(numpadSelectedProductProvider.notifier).update(null);
+           } else {
+              _keypadTimer = Timer(const Duration(milliseconds: 1500), () {
+                  _keypadBufferNotifier.value = '';
+              });
+              final parts = _keypadBufferNotifier.value.split('*');
+              final query = parts.isNotEmpty ? parts[0] : '';
+              Product? matched = _currentSortedProducts.where((p) => p.productNumber?.toLowerCase() == query.toLowerCase()).firstOrNull;
+              if (matched == null && int.tryParse(query) != null) {
+                 final idx = int.parse(query) - 1;
+                 if (idx >= 0 && idx < _currentSortedProducts.length) {
+                    matched = _currentSortedProducts[idx];
+                 }
+              }
+              if (matched != null) {
+                 ref.read(numpadSelectedProductProvider.notifier).update(matched);
+              } else {
+                 ref.read(numpadSelectedProductProvider.notifier).update(null);
+              }
+           }
+       } else {
+           // Buffer is empty, clear cart
+           ref.read(cartProvider.notifier).clearCart();
+       }
+       return true;
+    }
+    return false;
   }
 
   List<Product> _filterProducts(List<Product> source, String query) {
@@ -470,6 +738,14 @@ class _ProductPickerState extends ConsumerState<_ProductPicker>
       }
     }
 
+    // 3. Fallback to Grid Index (1-based)
+    if (matchedProduct == null && int.tryParse(query) != null) {
+      final idx = int.parse(query) - 1;
+      if (idx >= 0 && idx < allProducts.length) {
+        matchedProduct = allProducts[idx];
+      }
+    }
+
     if (matchedProduct != null) {
       final cartNotifier = ref.read(cartProvider.notifier);
       final cartItem = ref
@@ -506,6 +782,9 @@ class _ProductPickerState extends ConsumerState<_ProductPicker>
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    _keypadBufferNotifier.dispose();
+    _keypadTimer?.cancel();
     _tabController?.dispose();
     _searchQuery.dispose();
     _searchCtrl.dispose();
@@ -586,14 +865,21 @@ class _ProductPickerState extends ConsumerState<_ProductPicker>
       }
     }
 
-    // Sort all products: Popular first, then alphabetical
+    final numpadSelected = ref.watch(numpadSelectedProductProvider);
+    // Sort all products: Popular first, then alphabetical (but numpad selected first)
     final sortedAllProducts = List<Product>.from(allProducts)
       ..sort((a, b) {
+        if (numpadSelected != null) {
+           if (a.id == numpadSelected.id && b.id != numpadSelected.id) return -1;
+           if (b.id == numpadSelected.id && a.id != numpadSelected.id) return 1;
+        }
         final salesA = productSales[a.id] ?? 0;
         final salesB = productSales[b.id] ?? 0;
         if (salesA != salesB) return salesB.compareTo(salesA);
         return a.name.compareTo(b.name);
       });
+      
+    _currentSortedProducts = sortedAllProducts;
 
     // Extract unique categories from products, sorted by user-defined order then alphabetically
     final categorySet = allProducts.expand((p) {
@@ -667,7 +953,7 @@ class _ProductPickerState extends ConsumerState<_ProductPicker>
     final isMobileLandscape =
         isLandscape && MediaQuery.of(context).size.shortestSide < 600;
 
-    return ValueListenableBuilder(
+    final mainContent = ValueListenableBuilder(
       valueListenable: categoryStatusBox.listenable(),
       builder: (context, box, _) {
         // Re-filter categories if status changed
@@ -705,6 +991,23 @@ class _ProductPickerState extends ConsumerState<_ProductPicker>
                     ref
                         .read(inventorySearchQueryProvider.notifier)
                         .setQuery(query);
+
+                    // Keypad Highlight Logic
+                    if (query.trim().isNotEmpty) {
+                       Product? matched;
+                       // Match by Product Number first
+                       matched = sortedAllProducts.where((p) => p.productNumber?.toLowerCase() == query.toLowerCase()).firstOrNull;
+                       // Fallback to grid position (1 to N)
+                       if (matched == null && int.tryParse(query) != null) {
+                          final idx = int.parse(query) - 1;
+                          if (idx >= 0 && idx < sortedAllProducts.length) {
+                             matched = sortedAllProducts[idx];
+                          }
+                       }
+                       ref.read(numpadSelectedProductProvider.notifier).update(matched);
+                    } else {
+                       ref.read(numpadSelectedProductProvider.notifier).update(null);
+                    }
                   },
                   onSubmitted: (value) =>
                       _handleFastEntry(value, sortedAllProducts),
@@ -868,6 +1171,55 @@ class _ProductPickerState extends ConsumerState<_ProductPicker>
         );
       },
     );
+
+    return Focus(
+      autofocus: true,
+      child: Stack(
+        children: [
+          mainContent,
+        if (numpadSelected != null)
+           Positioned.fill(
+             child: GestureDetector(
+               onTap: () {
+                  ref.read(numpadSelectedProductProvider.notifier).update(null);
+               },
+               child: Container(
+                 color: Colors.black.withOpacity(0.4),
+                 child: Align(
+                   alignment: Alignment.topCenter,
+                   child: Padding(
+                     padding: const EdgeInsets.only(top: 24.0),
+                     child: TweenAnimationBuilder<double>(
+                       tween: Tween<double>(begin: 0.4, end: 1.0),
+                       duration: const Duration(milliseconds: 300),
+                       curve: Curves.easeOutBack,
+                       builder: (context, scale, child) {
+                         return Transform.scale(
+                           scale: scale,
+                           child: Material(
+                             color: Colors.transparent,
+                             child: _NumpadProductPopup(product: numpadSelected, bufferNotifier: _keypadBufferNotifier),
+                           ),
+                         );
+                       },
+                     ),
+                   ),
+                 ),
+               ),
+             ),
+           ),
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: _CalculatorOverlay(
+             key: globalCalculatorKey,
+             bufferNotifier: _keypadBufferNotifier,
+             onKeyPressed: _processKeypadInput,
+          ),
+        ),
+      ],
+    ),
+    );
   }
 }
 
@@ -907,7 +1259,12 @@ class _ProductGrid extends ConsumerWidget {
         : (isDesktop ? 0.70 : (isLandscape ? 0.85 : 0.65));
 
     return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 8,
+        bottom: isDesktop ? 100 : 350,
+      ),
       gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: hideImages ? (isDesktop ? 180 : 160) : (isDesktop ? 140 : 130),
         childAspectRatio: aspectRatio,
@@ -922,9 +1279,133 @@ class _ProductGrid extends ConsumerWidget {
   }
 }
 
+/// A compact, fully custom popup for showing a highlighted product
+/// when a product number is typed on the keypad. Uses ClipRRect + Image
+/// widget (never DecorationImage) so BoxFit.cover works perfectly with
+/// zero whitespace.
+class _NumpadProductPopup extends ConsumerWidget {
+  final Product product;
+  final ValueNotifier<String> bufferNotifier;
+
+  const _NumpadProductPopup({required this.product, required this.bufferNotifier});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final size = MediaQuery.of(context).size;
+    final bool isSmallScreen = size.height < 720;
+    final double popupWidth = isSmallScreen ? 200 : 280;
+    final double imageHeight = isSmallScreen ? 120 : 220;
+
+    final String? imgPath = Hive.box<String>('product_images').get(product.id)
+        ?? Hive.box<String>('category_images').get(product.category);
+    final imageProvider = ImageUtils.safeImageProvider(imgPath);
+
+    return Container(
+      width: popupWidth,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withOpacity(0.4),
+            blurRadius: 30,
+            spreadRadius: 8,
+          ),
+        ],
+        border: Border.all(color: Colors.amber, width: 3),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Image — fills exactly as much height as it needs, zero padding
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
+            child: imageProvider != null
+                ? Image(
+                    image: imageProvider,
+                    height: imageHeight,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    alignment: Alignment.center,
+                    gaplessPlayback: true,
+                  )
+                : Container(
+                    height: imageHeight,
+                    color: Colors.grey.shade100,
+                    child: Icon(Icons.image, size: 64, color: Colors.grey.shade300),
+                  ),
+          ),
+          // Text info — compact, no whitespace
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  product.name,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Colors.black87,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ValueListenableBuilder<String>(
+                  valueListenable: bufferNotifier,
+                  builder: (context, buffer, _) {
+                    final parts = buffer.split('*');
+                    final qty = parts.length > 1 ? (parts[1].isEmpty ? '1' : parts[1]) : '1';
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '₹${product.price.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'Qty: $qty',
+                            style: TextStyle(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _QuickAddProductCard extends ConsumerWidget {
   final Product product;
-  const _QuickAddProductCard({required this.product});
+  final bool isPopup;
+  const _QuickAddProductCard({required this.product, this.isPopup = false});
+
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -936,6 +1417,8 @@ class _QuickAddProductCard extends ConsumerWidget {
     final outOfStock = (showStock && product.trackInventory)
         ? product.stockCount <= 0
         : false;
+    final numpadSelected = ref.watch(numpadSelectedProductProvider);
+    final isHighlighted = numpadSelected?.id == product.id;
 
     final cart = ref.watch(cartProvider);
     final cartItem = cart.items
@@ -971,34 +1454,44 @@ class _QuickAddProductCard extends ConsumerWidget {
         : (isTamil ? 13.5 : 17.5);
 
     Widget cardContent = AnimatedScale(
-      scale: isInCart ? 1.015 : 1.0, // Extremely subtle 1.5% pop effect
-      duration: const Duration(milliseconds: 150),
-      curve: Curves.easeOutCubic,
-      child: Container(
+      scale: isHighlighted ? 1.05 : (isInCart ? 1.015 : 1.0),
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutBack,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
           color: isInCart
               ? theme.colorScheme.primary.withOpacity(0.04)
               : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isInCart ? Colors.green.shade400 : Colors.red.shade200,
-            width: 1.5,
+            color: isHighlighted ? Colors.amber : (isInCart ? Colors.green.shade400 : Colors.red.shade200),
+            width: isHighlighted ? 3.5 : 1.5,
           ),
-          boxShadow: isInCart
+          boxShadow: isHighlighted 
               ? [
                   BoxShadow(
-                    color: theme.colorScheme.primary.withOpacity(0.15),
-                    blurRadius: 12,
+                    color: Colors.amber.withOpacity(0.5),
+                    blurRadius: 18,
+                    spreadRadius: 2,
                     offset: const Offset(0, 6),
-                  ),
+                  )
                 ]
-              : [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+              : (isInCart
+                  ? [
+                      BoxShadow(
+                        color: theme.colorScheme.primary.withOpacity(0.15),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]),
         ),
         child: Material(
           color: Colors.transparent,
@@ -1046,7 +1539,8 @@ class _QuickAddProductCard extends ConsumerWidget {
                                     image: ImageUtils.safeImageProvider(
                                       currentImgPath,
                                     )!,
-                                    fit: BoxFit.fill,
+                                    fit: isPopup ? BoxFit.cover : BoxFit.fill,
+                                    alignment: isPopup ? Alignment.topCenter : Alignment.center,
                                   ) // Stretches to completely fill the space
                                 : null,
                           ),
@@ -1147,8 +1641,8 @@ class _QuickAddProductCard extends ConsumerWidget {
                 Flexible(
                   fit: settings.hideImagesInCheckout ? FlexFit.tight : FlexFit.loose,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                    height: settings.hideImagesInCheckout ? null : 88,
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    height: settings.hideImagesInCheckout ? null : (isPopup ? null : 88),
                     alignment: Alignment.center,
                     child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 250),
@@ -1397,9 +1891,94 @@ class _CartPreview extends ConsumerStatefulWidget {
 }
 
 class _CartPreviewState extends ConsumerState<_CartPreview> {
+  int? _highlightedCartIndex;
+
+  bool hasHighlightedItem() => _highlightedCartIndex != null;
+
+  void moveHighlightUp() {
+    final cart = ref.read(cartProvider);
+    if (cart.items.isEmpty) {
+      if (mounted) setState(() => _highlightedCartIndex = null);
+      return;
+    }
+    if (mounted) {
+      setState(() {
+        if (_highlightedCartIndex == null) {
+          _highlightedCartIndex = cart.items.length - 1;
+        } else {
+          _highlightedCartIndex = _highlightedCartIndex! - 1;
+          if (_highlightedCartIndex! < 0) _highlightedCartIndex = 0;
+        }
+      });
+    }
+  }
+
+  void moveHighlightDown() {
+    final cart = ref.read(cartProvider);
+    if (cart.items.isEmpty) {
+      if (mounted) setState(() => _highlightedCartIndex = null);
+      return;
+    }
+    if (mounted) {
+      setState(() {
+        if (_highlightedCartIndex == null) {
+          _highlightedCartIndex = 0;
+        } else {
+          _highlightedCartIndex = _highlightedCartIndex! + 1;
+          if (_highlightedCartIndex! >= cart.items.length) {
+            _highlightedCartIndex = cart.items.length - 1;
+          }
+        }
+      });
+    }
+  }
+
+  void clearHighlight() {
+    if (mounted) setState(() => _highlightedCartIndex = null);
+  }
+
+  void increaseHighlightedQuantity(WidgetRef ref) {
+    if (_highlightedCartIndex != null) {
+      final cart = ref.read(cartProvider);
+      if (_highlightedCartIndex! < cart.items.length) {
+        final item = cart.items[_highlightedCartIndex!];
+        final step = item.product.allowHalfPortion ? 0.5 : 1.0;
+        ref.read(cartProvider.notifier).updateQuantity(item.product.id, item.quantity + step);
+      }
+    }
+  }
+
+  void decreaseHighlightedQuantity(WidgetRef ref) {
+    if (_highlightedCartIndex != null) {
+      final cart = ref.read(cartProvider);
+      if (_highlightedCartIndex! < cart.items.length) {
+        final item = cart.items[_highlightedCartIndex!];
+        final minQty = item.product.allowHalfPortion ? 0.5 : 1.0;
+        final step = item.product.allowHalfPortion ? 0.5 : 1.0;
+        if (item.quantity > minQty) {
+          ref.read(cartProvider.notifier).updateQuantity(item.product.id, item.quantity - step);
+        } else {
+          ref.read(cartProvider.notifier).removeProduct(item.product.id);
+          if (mounted) {
+            setState(() {
+              if (cart.items.length <= 1) {
+                _highlightedCartIndex = null;
+              } else if (_highlightedCartIndex! >= cart.items.length - 1) {
+                 _highlightedCartIndex = cart.items.length - 2;
+                 if (_highlightedCartIndex! < 0) _highlightedCartIndex = null;
+              }
+            });
+          }
+        }
+      }
+    }
+  }
+
   String _selectedPaymentMode = 'Cash';
   final _splitCashCtrl = TextEditingController();
   final _splitUpiCtrl = TextEditingController();
+  final _splitCashFocus = FocusNode();
+  final _splitUpiFocus = FocusNode();
   bool _splitValid = false;
   bool _isProcessing = false;
 
@@ -1414,10 +1993,48 @@ class _CartPreviewState extends ConsumerState<_CartPreview> {
     _paymentModeFocus.requestFocus();
   }
 
+  bool get isSplitFocused => _splitCashFocus.hasFocus || _splitUpiFocus.hasFocus;
+
+  bool handleSplitKeypadEnter() {
+    if (_splitCashFocus.hasFocus) {
+       _splitUpiFocus.requestFocus();
+       return true;
+    } else if (_splitUpiFocus.hasFocus) {
+       triggerPayment(ref);
+       return true;
+    }
+    return false;
+  }
+
+  void togglePaymentMode() {
+    if (!mounted) return;
+    setState(() {
+      if (_selectedPaymentMode == 'Cash') {
+        _selectedPaymentMode = 'UPI';
+        globalProductPickerKey.currentState?.focusSearch(); 
+      } else if (_selectedPaymentMode == 'UPI') {
+        _selectedPaymentMode = 'Split';
+        Future.delayed(const Duration(milliseconds: 100), () {
+           if (mounted) _splitCashFocus.requestFocus();
+        });
+      } else {
+        _selectedPaymentMode = 'Cash';
+        globalProductPickerKey.currentState?.focusSearch(); 
+      }
+    });
+    NotificationHelper.showCenter(
+      context,
+      'Payment Mode: $_selectedPaymentMode',
+      isError: false,
+    );
+  }
+
   @override
   void dispose() {
     _splitCashCtrl.dispose();
     _splitUpiCtrl.dispose();
+    _splitCashFocus.dispose();
+    _splitUpiFocus.dispose();
     _orderTypeFocus.dispose();
     _paymentModeFocus.dispose();
     super.dispose();
@@ -1440,11 +2057,25 @@ class _CartPreviewState extends ConsumerState<_CartPreview> {
 
     if (mounted) {
       setState(() => _isProcessing = true);
-      await _processDirectCheckout(
-        context,
-        ref,
-        cart,
-        ref.read(settingsProvider),
+      await processFastCheckout(
+        context: context,
+        ref: ref,
+        cart: cart,
+        settings: ref.read(settingsProvider),
+        selectedPaymentMode: _selectedPaymentMode,
+        splitCash: _splitCashCtrl.text,
+        splitUpi: _splitUpiCtrl.text,
+        isMobileSheet: widget.isMobileSheet,
+        onCartCleared: () {
+          if (mounted) {
+            setState(() {
+              _selectedPaymentMode = 'Cash';
+              _splitCashCtrl.clear();
+              _splitUpiCtrl.clear();
+              _splitValid = false;
+            });
+          }
+        },
       );
       if (mounted) {
         setState(() => _isProcessing = false);
@@ -1466,9 +2097,12 @@ class _CartPreviewState extends ConsumerState<_CartPreview> {
       itemBuilder: (context, index) {
         final item = cart.items[index];
         final minQty = item.product.allowHalfPortion ? 0.5 : 1.0;
-        return ListTile(
-          leading: IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.red),
+        final isHighlighted = _highlightedCartIndex == index;
+        return Container(
+          color: isHighlighted ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5) : null,
+          child: ListTile(
+            leading: IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
             tooltip: 'Remove item',
             onPressed: () {
               ref.read(cartProvider.notifier).removeProduct(item.product.id);
@@ -1544,7 +2178,7 @@ class _CartPreviewState extends ConsumerState<_CartPreview> {
               ),
             ],
           ),
-        );
+        ));
       },
     );
 
@@ -1814,14 +2448,7 @@ class _CartPreviewState extends ConsumerState<_CartPreview> {
             title: 'Subtotal'.tr(ref.watch(languageProvider)),
             value: cart.subtotal,
           ),
-          if (settings.enableTaxCalculation) ...[
-            const SizedBox(height: 8),
-            _SummaryRow(
-              title:
-                  '${'Tax'.tr(ref.watch(languageProvider))} (${(cart.taxRate * 100).toInt()}%)',
-              value: cart.taxAmount,
-            ),
-          ],
+
           if (cart.discountAmount > 0) ...[
             const SizedBox(height: 8),
             _SummaryRow(
@@ -1918,6 +2545,9 @@ class _CartPreviewState extends ConsumerState<_CartPreview> {
                                         controller: mode == 'Cash'
                                             ? _splitCashCtrl
                                             : _splitUpiCtrl,
+                                        focusNode: mode == 'Cash'
+                                            ? _splitCashFocus
+                                            : _splitUpiFocus,
                                         keyboardType:
                                             const TextInputType.numberWithOptions(
                                               decimal: true,
@@ -2115,14 +2745,20 @@ class _CartPreviewState extends ConsumerState<_CartPreview> {
       ),
     );
   }
+}
 
-  Future<void> _processDirectCheckout(
-    BuildContext context,
-    WidgetRef ref,
-    CartState cart,
-    SettingsState settings,
-  ) async {
-    final navigatorContext = Navigator.of(context).context;
+Future<void> processFastCheckout({
+  required BuildContext context,
+  required WidgetRef ref,
+  required CartState cart,
+  required SettingsState settings,
+  String selectedPaymentMode = 'Cash',
+  String splitCash = '',
+  String splitUpi = '',
+  bool isMobileSheet = false,
+  VoidCallback? onCartCleared,
+}) async {
+  final navigatorContext = Navigator.of(context).context;
 
     // Resolve all providers upfront before unmounting
     final printer = ref.read(printerProvider.notifier);
@@ -2132,7 +2768,6 @@ class _CartPreviewState extends ConsumerState<_CartPreview> {
     final authState = ref.read(authProvider);
     final printerState = ref.read(printerProvider);
 
-    // Pre-checkout Printer Check
     if (printerState.connectedDevice == null) {
       final shouldGoToSettings = await showDialog<bool>(
         context: context,
@@ -2164,7 +2799,7 @@ class _CartPreviewState extends ConsumerState<_CartPreview> {
       );
 
       if (shouldGoToSettings == true) {
-        if (mounted) {
+        if (context.mounted) {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const PrinterSettingsScreen()),
@@ -2178,16 +2813,15 @@ class _CartPreviewState extends ConsumerState<_CartPreview> {
         cart.editingOrderId ?? orderNotifier.generateNextOrderId();
     final paymentStatus = 'PAID';
     // If split mode, encode the amounts into the paymentMode string for analytics parsing
-    final paymentMode = _selectedPaymentMode == 'Split'
-        ? 'Split|${_splitCashCtrl.text}|${_splitUpiCtrl.text}'
-        : _selectedPaymentMode;
+    final paymentMode = selectedPaymentMode == 'Split'
+        ? 'Split|$splitCash|$splitUpi'
+        : selectedPaymentMode;
     final staffName = authState?.name ?? 'Admin';
     final finalCart = cart;
 
-    // 1. Show popup and close UI first while context is mounted
     if (context.mounted) {
       final nav = Navigator.of(context);
-      if (widget.isMobileSheet) {
+      if (isMobileSheet) {
         nav.pop();
       }
       UiUtils.showSquarePopup(
@@ -2201,13 +2835,8 @@ class _CartPreviewState extends ConsumerState<_CartPreview> {
     cartNotifier.clearCart();
 
     // Reset payment selector
-    if (mounted) {
-      setState(() {
-        _selectedPaymentMode = 'Cash';
-        _splitCashCtrl.clear();
-        _splitUpiCtrl.clear();
-        _splitValid = false;
-      });
+    if (onCartCleared != null) {
+      onCartCleared();
     }
 
     // 2. Do heavy tasks in background!
@@ -2357,7 +2986,6 @@ class _CartPreviewState extends ConsumerState<_CartPreview> {
       }
     });
   }
-}
 
 class _SummaryRow extends StatelessWidget {
   final String title;
@@ -2385,6 +3013,179 @@ class _SummaryRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _CalculatorOverlay extends StatefulWidget {
+  final ValueNotifier<String> bufferNotifier;
+  final Function(String) onKeyPressed;
+
+  const _CalculatorOverlay({
+    Key? key,
+    required this.bufferNotifier,
+    required this.onKeyPressed,
+  }) : super(key: key);
+
+  @override
+  State<_CalculatorOverlay> createState() => _CalculatorOverlayState();
+}
+
+class _CalculatorOverlayState extends State<_CalculatorOverlay> {
+  bool _isExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.bufferNotifier.addListener(_onBufferChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.bufferNotifier.removeListener(_onBufferChanged);
+    super.dispose();
+  }
+
+  void _onBufferChanged() {
+    if (widget.bufferNotifier.value.isNotEmpty) {
+      if (!_isExpanded) {
+        setState(() => _isExpanded = true);
+      }
+    } else {
+      if (_isExpanded) {
+        setState(() => _isExpanded = false);
+      }
+    }
+  }
+
+  Widget _buildKey(String label, {Color? bgColor, Color? textColor, bool isWide = false}) {
+    return Expanded(
+      flex: isWide ? 2 : 1,
+      child: Padding(
+        padding: const EdgeInsets.all(4.0),
+        child: SizedBox(
+          height: 60,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: bgColor ?? Colors.grey[200],
+              foregroundColor: textColor ?? Colors.black87,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: EdgeInsets.zero,
+            ),
+            onPressed: () => widget.onKeyPressed(label),
+            child: Text(
+              label == 'BACKSPACE' ? '⌫' : (label == 'ENTER' ? '↵' : label),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isExpanded) {
+      return FloatingActionButton(
+        heroTag: 'calculator_fab',
+        backgroundColor: Theme.of(context).primaryColor,
+        onPressed: () => setState(() => _isExpanded = true),
+        child: const Icon(Icons.dialpad, color: Colors.white),
+      );
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      width: 260,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5)),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header with Buffer
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ValueListenableBuilder<String>(
+                    valueListenable: widget.bufferNotifier,
+                    builder: (context, val, child) {
+                      return Text(
+                        val.isEmpty ? 'Tap to start...' : val,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(val.isEmpty ? 0.7 : 1),
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      );
+                    },
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () {
+                    setState(() => _isExpanded = false);
+                  },
+                ),
+              ],
+            ),
+          ),
+          // Keypad Layout
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    _buildKey('7'),
+                    _buildKey('8'),
+                    _buildKey('9'),
+                    _buildKey('BACKSPACE', bgColor: Colors.red[100], textColor: Colors.red[900]),
+                  ],
+                ),
+                Row(
+                  children: [
+                    _buildKey('4'),
+                    _buildKey('5'),
+                    _buildKey('6'),
+                    _buildKey('*', bgColor: Colors.blue[100], textColor: Colors.blue[900]),
+                  ],
+                ),
+                Row(
+                  children: [
+                    _buildKey('1'),
+                    _buildKey('2'),
+                    _buildKey('3'),
+                    _buildKey('+', bgColor: Colors.green[100], textColor: Colors.green[900]),
+                  ],
+                ),
+                Row(
+                  children: [
+                    _buildKey('0', isWide: true),
+                    _buildKey('ENTER', isWide: true, bgColor: Colors.orange[100], textColor: Colors.orange[900]),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

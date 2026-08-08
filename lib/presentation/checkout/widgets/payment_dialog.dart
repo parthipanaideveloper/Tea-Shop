@@ -186,16 +186,7 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
                     'Rs. ${cart.subtotal.toStringAsFixed(2)}',
                     style: const pw.TextStyle(fontSize: 7.5)),
                 ]),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text(
-                    'Tax (${(cart.taxRate * 100).toInt()}%):',
-                    style: const pw.TextStyle(fontSize: 7.5)),
-                  pw.Text(
-                    'Rs. ${cart.taxAmount.toStringAsFixed(2)}',
-                    style: const pw.TextStyle(fontSize: 7.5)),
-                ]),
+
               if (cart.discountAmount > 0)
                 pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -541,14 +532,19 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
                               ? null
                               : () async {
                                   if (context.mounted) {
-                                    setState(() => _isProcessing = true);
-                                    await _processCheckout(
-                                      context,
-                                      ref,
-                                      cart,
-                                      settings,
-                                      printerState,
-                                      'PAID');
+                                      setState(() => _isProcessing = true);
+                                      await CheckoutHelper.processCheckout(
+                                        context: context,
+                                        ref: ref,
+                                        cart: cart,
+                                        settings: settings,
+                                        printerState: printerState,
+                                        paymentStatus: 'PAID',
+                                        paymentMode: _selectedPaymentMode,
+                                        customerName: _customerName.trim(),
+                                        customerPhone: _customerPhone.trim(),
+                                        shouldPop: true,
+                                      );
                                     if (mounted) {
                                       setState(() => _isProcessing = false);
                                     }
@@ -647,14 +643,21 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
           });
       });
   }
+} // End of _PaymentDialogState
 
-  Future<void> _processCheckout(
-    BuildContext context,
-    WidgetRef ref,
-    CartState cart,
-    SettingsState settings,
-    PrinterState printerState,
-    String paymentStatus) async {
+class CheckoutHelper {
+  static Future<void> processCheckout({
+    required BuildContext context,
+    required WidgetRef ref,
+    required CartState cart,
+    required SettingsState settings,
+    required PrinterState printerState,
+    required String paymentStatus,
+    required String paymentMode,
+    required String customerName,
+    required String customerPhone,
+    bool shouldPop = false,
+  }) async {
     final navigatorContext = Navigator.of(context).context;
     
     // Resolve all providers upfront before unmounting
@@ -669,8 +672,8 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
     // Capture properties before cart is cleared
     final finalCart = cart;
     final finalShopName = settings.shopName;
-    final targetPhone = _customerPhone.trim();
-    final targetName = _customerName.trim();
+    final targetPhone = customerPhone;
+    final targetName = customerName;
     final newOrderId = orderNotifier.generateNextOrderId();
     final staffName = session?.name ?? 'Admin';
 
@@ -682,7 +685,7 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
         subtotal: finalCart.subtotal,
         tax: finalCart.taxAmount,
         discount: finalCart.discountAmount,
-        paymentMode: _selectedPaymentMode,
+        paymentMode: paymentMode,
         paymentStatus: paymentStatus,
         customerName: targetName,
         customerPhone: targetPhone,
@@ -744,8 +747,9 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog> {
 
       // 2. Show confirmation popup & Clear Cart ONLY after order is saved successfully!
       if (context.mounted) {
-        final nav = Navigator.of(context);
-        nav.pop();
+        if (shouldPop) {
+           Navigator.of(context).pop();
+        }
         UiUtils.showSquarePopup(
           navigatorContext,
           'Order Confirmed! 🎉',

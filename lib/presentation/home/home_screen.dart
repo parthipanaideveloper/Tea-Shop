@@ -13,6 +13,7 @@ import '../../providers/license_provider.dart';
 import '../../core/extensions/string_extensions.dart';
 import '../inventory/inventory_screen.dart';
 import '../checkout/checkout_screen.dart';
+import '../checkout/widgets/payment_dialog.dart';
 import '../../providers/cart_provider.dart';
 import '../analytics/analytics_screen.dart';
 import 'dashboard_screen.dart';
@@ -40,10 +41,12 @@ import '../../providers/inventory_provider.dart';
 class NavigationNotifier extends Notifier<String> {
   @override
   String build() => 'overview';
+
+  void updateState(String newValue) {
+    state = newValue;
+  }
 }
 final globalNavigationProvider = NotifierProvider<NavigationNotifier, String>(() => NavigationNotifier());
-
-enum NumpadState { awaitingItem, awaitingQuantity }
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -55,8 +58,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
   final List<String> _navigationHistory = ['overview'];
   bool _hasAttemptedAutoConnect = false;
-  NumpadState _numpadState = NumpadState.awaitingItem;
-  Product? _selectedProduct;
 
   @override
   void initState() {
@@ -70,106 +71,70 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   }
 
   bool _handleKeyEvent(KeyEvent event) {
+    final currentRoute = ref.read(globalNavigationProvider);
+    if (currentRoute != 'overview') {
+      return false; // Disable numpad if not on overview (checkout handles its own)
+    }
+
     if (event is KeyDownEvent) {
       final char = event.character;
       
       // Enter Key
+      // Clear/Reset Key (Backspace or Delete)
+      if (event.logicalKey == LogicalKeyboardKey.backspace || event.logicalKey == LogicalKeyboardKey.delete) {
+         _resetNumpadState(clearCart: true);
+         return true;
+      }
       if (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter) {
-        _processInstantKey('Enter');
-        return true;
-      }
-      
-      // Clear/Reset Key (Backspace or 0)
-      if (event.logicalKey == LogicalKeyboardKey.backspace || char == '0' || event.logicalKey == LogicalKeyboardKey.digit0 || event.logicalKey == LogicalKeyboardKey.numpad0) {
-        _processInstantKey('Clear');
-        return true;
-      }
-
-      // Check digits 1-9
-      if (char != null && char.length == 1 && int.tryParse(char) != null && char != '0') {
-         _processInstantKey(char);
+         _processCheckoutAndPrint();
          return true;
       }
 
-      // Fallback for logical keys if character is null
-      if (event.logicalKey == LogicalKeyboardKey.digit1 || event.logicalKey == LogicalKeyboardKey.numpad1) { _processInstantKey('1'); return true; }
-      if (event.logicalKey == LogicalKeyboardKey.digit2 || event.logicalKey == LogicalKeyboardKey.numpad2) { _processInstantKey('2'); return true; }
-      if (event.logicalKey == LogicalKeyboardKey.digit3 || event.logicalKey == LogicalKeyboardKey.numpad3) { _processInstantKey('3'); return true; }
-      if (event.logicalKey == LogicalKeyboardKey.digit4 || event.logicalKey == LogicalKeyboardKey.numpad4) { _processInstantKey('4'); return true; }
-      if (event.logicalKey == LogicalKeyboardKey.digit5 || event.logicalKey == LogicalKeyboardKey.numpad5) { _processInstantKey('5'); return true; }
-      if (event.logicalKey == LogicalKeyboardKey.digit6 || event.logicalKey == LogicalKeyboardKey.numpad6) { _processInstantKey('6'); return true; }
-      if (event.logicalKey == LogicalKeyboardKey.digit7 || event.logicalKey == LogicalKeyboardKey.numpad7) { _processInstantKey('7'); return true; }
-      if (event.logicalKey == LogicalKeyboardKey.digit8 || event.logicalKey == LogicalKeyboardKey.numpad8) { _processInstantKey('8'); return true; }
-      if (event.logicalKey == LogicalKeyboardKey.digit9 || event.logicalKey == LogicalKeyboardKey.numpad9) { _processInstantKey('9'); return true; }
+      String? key;
+      if (char != null && char.length == 1 && int.tryParse(char) != null) {
+          key = char;
+      } else if (event.logicalKey == LogicalKeyboardKey.digit0 || event.logicalKey == LogicalKeyboardKey.numpad0) key = '0';
+      else if (event.logicalKey == LogicalKeyboardKey.digit1 || event.logicalKey == LogicalKeyboardKey.numpad1) key = '1';
+      else if (event.logicalKey == LogicalKeyboardKey.digit2 || event.logicalKey == LogicalKeyboardKey.numpad2) key = '2';
+      else if (event.logicalKey == LogicalKeyboardKey.digit3 || event.logicalKey == LogicalKeyboardKey.numpad3) key = '3';
+      else if (event.logicalKey == LogicalKeyboardKey.digit4 || event.logicalKey == LogicalKeyboardKey.numpad4) key = '4';
+      else if (event.logicalKey == LogicalKeyboardKey.digit5 || event.logicalKey == LogicalKeyboardKey.numpad5) key = '5';
+      else if (event.logicalKey == LogicalKeyboardKey.digit6 || event.logicalKey == LogicalKeyboardKey.numpad6) key = '6';
+      else if (event.logicalKey == LogicalKeyboardKey.digit7 || event.logicalKey == LogicalKeyboardKey.numpad7) key = '7';
+      else if (event.logicalKey == LogicalKeyboardKey.digit8 || event.logicalKey == LogicalKeyboardKey.numpad8) key = '8';
+      else if (event.logicalKey == LogicalKeyboardKey.digit9 || event.logicalKey == LogicalKeyboardKey.numpad9) key = '9';
+
+      if (key != null) {
+          _processInstantKey(key);
+          return true;
+      }
     }
     return false;
   }
 
-  void _processInstantKey(String key) async {
-    if (key == 'Clear') {
-       _numpadState = NumpadState.awaitingItem;
-       _selectedProduct = null;
+  void _processInstantKey(String key) {
+      final allProducts = ref.read(inventoryProvider);
+      Product? targetProduct = allProducts.where((p) => p.productNumber == key).firstOrNull;
+
+      if (targetProduct != null) {
+          ref.read(cartProvider.notifier).addProduct(targetProduct);
+          if (mounted) {
+             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${targetProduct.name} Added! Press Enter when ready to print.'), backgroundColor: Colors.blue, duration: const Duration(milliseconds: 1000)));
+          }
+      } else {
+          if (mounted) {
+             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Invalid Item Code: $key'), backgroundColor: Colors.red, duration: const Duration(milliseconds: 1000)));
+          }
+      }
+  }
+
+  void _resetNumpadState({bool clearCart = false}) {
+     if (clearCart) {
        ref.read(cartProvider.notifier).clearCart();
        if (mounted) {
          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cart Cleared!'), backgroundColor: Colors.red));
        }
-       return;
-    }
-
-    if (key == 'Enter') {
-       _processCheckoutAndPrint();
-       return;
-    }
-
-    // It's a number key (1-9)
-    if (_numpadState == NumpadState.awaitingItem) {
-        final allProducts = ref.read(inventoryProvider);
-        Product? targetProduct;
-        switch (key) {
-          case '1': targetProduct = allProducts.where((p) => p.name.contains('Single Tea')).firstOrNull; break;
-          case '2': targetProduct = allProducts.where((p) => p.name == 'Parcel Tea').firstOrNull; break;
-          case '3': targetProduct = allProducts.where((p) => p.name.contains('Coffee') && !p.name.contains('Parcel')).firstOrNull; break;
-          case '4': targetProduct = allProducts.where((p) => p.name.contains('Parcel Coffee')).firstOrNull; break;
-          case '5': targetProduct = allProducts.where((p) => p.name.contains('Ginger Tea')).firstOrNull; break;
-          case '6': targetProduct = allProducts.where((p) => p.name.contains('Cigarette')).firstOrNull; break;
-          case '7': targetProduct = allProducts.where((p) => p.name.contains('Cool Drink')).firstOrNull; break;
-          case '8': targetProduct = allProducts.where((p) => p.name.contains('Water Bottle')).firstOrNull; break;
-        }
-
-        if (targetProduct != null) {
-            _selectedProduct = targetProduct;
-            _numpadState = NumpadState.awaitingQuantity;
-            if (mounted) {
-               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('\${targetProduct.name} Selected. Enter Quantity.'), backgroundColor: Colors.orange, duration: const Duration(milliseconds: 1000)));
-            }
-        }
-    } else if (_numpadState == NumpadState.awaitingQuantity) {
-        int? qty = int.tryParse(key);
-        if (qty != null && qty > 0 && _selectedProduct != null) {
-            // Add to cart N times
-            for (int i = 0; i < qty; i++) {
-               ref.read(cartProvider.notifier).addProduct(_selectedProduct!);
-            }
-            
-            // Ensure we are on Checkout screen
-            final currentRoute = ref.read(globalNavigationProvider);
-            if (currentRoute != 'checkout') {
-               ref.read(globalNavigationProvider.notifier).state = 'checkout';
-               setState(() {
-                 _navigationHistory.remove('checkout');
-                 _navigationHistory.add('checkout');
-               });
-            }
-
-            if (mounted) {
-               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Added $qty x \${_selectedProduct!.name}'), backgroundColor: Colors.blueAccent, duration: const Duration(milliseconds: 1000)));
-            }
-            
-            // Reset state for next item
-            _selectedProduct = null;
-            _numpadState = NumpadState.awaitingItem;
-        }
-    }
+     }
   }
 
   Future<void> _processCheckoutAndPrint() async {
@@ -244,8 +209,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 
       // Reset everything
       ref.read(cartProvider.notifier).clearCart();
-      _numpadState = NumpadState.awaitingItem;
-      _selectedProduct = null;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -382,7 +345,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     final newRoute = _indexToRoute(index, showInventory);
     if (currentRoute == newRoute) return;
     
-    ref.read(globalNavigationProvider.notifier).state = newRoute;
+    ref.read(globalNavigationProvider.notifier).updateState(newRoute);
     setState(() {
       _navigationHistory.remove(newRoute);
       _navigationHistory.add(newRoute);
@@ -542,28 +505,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 if (_navigationHistory.length > 1) {
                   setState(() {
                     _navigationHistory.removeLast();
-                    ref.read(globalNavigationProvider.notifier).state = _navigationHistory.last;
+                    ref.read(globalNavigationProvider.notifier).updateState(_navigationHistory.last);
                   });
                 } else {
-                  ref.read(globalNavigationProvider.notifier).state = 'overview';
+                  ref.read(globalNavigationProvider.notifier).updateState('overview');
                   setState(() => _navigationHistory.add('overview'));
                 }
               },
             ),
-      title: false
-          ? const Text(
-              '👑 CUSTOMER SUPPORT',
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF1E293B),
-                letterSpacing: 1.5,
-                fontSize: 20))
-          : Text(
-              pageTitle,
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                fontSize: 20)),
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          false
+            ? const Text(
+                '👑 CUSTOMER SUPPORT',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1E293B),
+                  letterSpacing: 1.5,
+                  fontSize: 20))
+            : Text(
+                pageTitle,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  fontSize: 20)),
+        ],
+      ),
       actions: [
         if (true)
           IconButton(
@@ -1220,7 +1188,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 
           setState(() {
             _navigationHistory.removeLast();
-            ref.read(globalNavigationProvider.notifier).state = _navigationHistory.last;
+            ref.read(globalNavigationProvider.notifier).updateState(_navigationHistory.last);
           });
         },
         child: mainScaffold),

@@ -41,101 +41,105 @@ class _TeaShopHomeScreenState extends ConsumerState<TeaShopHomeScreen> {
   }
 
   bool _handleKeyEvent(KeyEvent event) {
-    if (event is KeyDownEvent) {
-      final keyLabel = event.logicalKey.keyLabel;
-      if (keyLabel != null && RegExp(r'^[0-9]$').hasMatch(keyLabel)) {
-        _processInstantKey(keyLabel);
-        return true;
-      }
-    }
+    // Disabled in favor of checkout_screen.dart advanced logic
     return false;
   }
 
-  void _processInstantKey(String key) async {
+  void _processInstantKey(String key) {
     final allProducts = ref.read(inventoryProvider);
-    Product? targetProduct;
-    switch (key) {
-      case '1': targetProduct = allProducts.where((p) => p.name.contains('Coffee') && !p.name.contains('Parcel')).firstOrNull; break;
-      case '2': targetProduct = allProducts.where((p) => p.name.contains('Single Tea')).firstOrNull; break;
-      case '3': targetProduct = allProducts.where((p) => p.name.contains('Ginger Tea')).firstOrNull; break;
-      case '4': targetProduct = allProducts.where((p) => p.name == 'Parcel Tea').firstOrNull; break;
-      case '5': targetProduct = allProducts.where((p) => p.name.contains('Parcel Coffee')).firstOrNull; break;
-      case '6': targetProduct = allProducts.where((p) => p.name.contains('Cool Drink Small')).firstOrNull; break;
-      case '7': targetProduct = allProducts.where((p) => p.name.contains('Water Bottle 10')).firstOrNull; break;
-    }
+    Product? targetProduct = allProducts.where((p) => p.productNumber == key).firstOrNull;
 
     if (targetProduct != null) {
-      // 1. Create Order
-      final orderNotifier = ref.read(orderProvider.notifier);
-      final newOrderId = orderNotifier.generateNextOrderId();
-      final session = ref.read(authProvider);
-      final staffName = session?.name ?? 'Admin';
-      final cartItem = CartItem(product: targetProduct, quantity: 1);
-
-      await orderNotifier.saveOrder(
-        items: [cartItem],
-        total: targetProduct.price,
-        subtotal: targetProduct.price,
-        tax: 0,
-        discount: 0,
-        paymentMode: 'CASH',
-        paymentStatus: 'PAID',
-        customerName: '',
-        customerPhone: '',
-        staffName: staffName,
-        orderType: 'DINE',
-        dineTableNo: '',
-        id: newOrderId,
-      );
-
-      // 2. Generate Receipt
-      final settings = ref.read(settingsProvider);
-      final receiptBytes = await PrinterService.generateReceiptBytes(
-        items: [cartItem],
-        subtotal: targetProduct.price,
-        tax: 0,
-        discount: 0,
-        total: targetProduct.price,
-        shopName: settings.shopName,
-        receiptHeader: settings.receiptHeader,
-        receiptFooter: settings.receiptFooter,
-        showGstOnReceipt: settings.showGstOnReceipt,
-        gstNumber: settings.gstNumber,
-        isUnpaid: false,
-        orderId: newOrderId,
-        tableNo: '',
-        orderType: 'DINE',
-        customerName: '',
-        customerPhone: '',
-        printAsImage: settings.printAsImage,
-        is80mmPaper: settings.is80mmPaper,
-        parcelToken: null,
-        addressLine1: settings.addressLine1,
-        addressLine2: settings.addressLine2,
-        hotelType: settings.hotelType,
-        mobileNumber: settings.mobileNumber,
-        fssaiNumber: settings.fssaiNumber,
-        enableAddressOnReceipt: settings.enableAddressOnReceipt,
-        enableMobileOnReceipt: settings.enableMobileOnReceipt,
-        enableFssaiOnReceipt: settings.enableFssaiOnReceipt,
-        enableHotelTypeOnReceipt: settings.enableHotelTypeOnReceipt,
-      );
-
-      // 3. Print
-      if (receiptBytes != null) {
-        await ref.read(printerProvider.notifier).printReceipt(receiptBytes);
-      }
-
-      // 4. Feedback
+      ref.read(cartProvider.notifier).addProduct(targetProduct);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Printed: \${targetProduct.name}'),
-            backgroundColor: Colors.green,
-            duration: const Duration(milliseconds: 1000),
+            content: Text('Added ${targetProduct.name} to cart'),
+            backgroundColor: Colors.blue,
+            duration: const Duration(milliseconds: 500),
           )
         );
       }
+    }
+  }
+
+  void _processInstantCheckout() async {
+    final cartState = ref.read(cartProvider);
+    if (cartState.items.isEmpty) return;
+
+    final orderNotifier = ref.read(orderProvider.notifier);
+    final newOrderId = orderNotifier.generateNextOrderId();
+    final session = ref.read(authProvider);
+    final staffName = session?.name ?? 'Admin';
+    
+    final cartNotifier = ref.read(cartProvider.notifier);
+    final total = cartState.total;
+
+    await orderNotifier.saveOrder(
+      items: cartState.items,
+      total: total,
+      subtotal: total,
+      tax: 0,
+      discount: 0,
+      paymentMode: 'CASH',
+      paymentStatus: 'PAID',
+      customerName: '',
+      customerPhone: '',
+      staffName: staffName,
+      orderType: 'DINE',
+      dineTableNo: '',
+      id: newOrderId,
+    );
+
+    // 2. Generate Receipt
+    final settings = ref.read(settingsProvider);
+    final receiptBytes = await PrinterService.generateReceiptBytes(
+      items: cartState.items,
+      subtotal: total,
+      tax: 0,
+      discount: 0,
+      total: total,
+      shopName: settings.shopName,
+      receiptHeader: settings.receiptHeader,
+      receiptFooter: settings.receiptFooter,
+      showGstOnReceipt: settings.showGstOnReceipt,
+      gstNumber: settings.gstNumber,
+      isUnpaid: false,
+      orderId: newOrderId,
+      tableNo: '',
+      orderType: 'DINE',
+      customerName: '',
+      customerPhone: '',
+      printAsImage: settings.printAsImage,
+      is80mmPaper: settings.is80mmPaper,
+      parcelToken: null,
+      addressLine1: settings.addressLine1,
+      addressLine2: settings.addressLine2,
+      hotelType: settings.hotelType,
+      mobileNumber: settings.mobileNumber,
+      fssaiNumber: settings.fssaiNumber,
+      enableAddressOnReceipt: settings.enableAddressOnReceipt,
+      enableMobileOnReceipt: settings.enableMobileOnReceipt,
+      enableFssaiOnReceipt: settings.enableFssaiOnReceipt,
+      enableHotelTypeOnReceipt: settings.enableHotelTypeOnReceipt,
+    );
+
+    // 3. Print
+    if (receiptBytes != null) {
+      await ref.read(printerProvider.notifier).printReceipt(receiptBytes);
+    }
+
+    // 4. Clear cart and show feedback
+    cartNotifier.clearCart();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Order printed successfully!'),
+          backgroundColor: Colors.green,
+          duration: Duration(milliseconds: 1000),
+        )
+      );
     }
   }
 

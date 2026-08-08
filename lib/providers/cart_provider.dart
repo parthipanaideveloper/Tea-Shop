@@ -5,6 +5,13 @@ import '../domain/models/product.dart';
 import '../domain/models/cart_item.dart';
 import '../domain/models/order.dart';
 
+class NumpadSelectedProductNotifier extends Notifier<Product?> {
+  @override
+  Product? build() => null;
+  void update(Product? p) => state = p;
+}
+final numpadSelectedProductProvider = NotifierProvider<NumpadSelectedProductNotifier, Product?>(NumpadSelectedProductNotifier.new);
+
 class CartState {
   final List<CartItem> items;
   final double discountPercentage;
@@ -25,12 +32,7 @@ class CartState {
   });
 
   double get taxRate {
-    final box = Hive.box<String>('settings');
-    final enableTax = (box.get('enableTaxCalculation') ?? 'true') == 'true';
-    if (!enableTax) return 0.0;
-
-    final taxStr = box.get('taxRate') ?? '5.0';
-    return (double.tryParse(taxStr) ?? 5.0) / 100.0;
+    return 0.0;
   }
 
   double get subtotal {
@@ -47,8 +49,7 @@ class CartState {
   }
 
   double get taxAmount {
-    final double raw = (subtotal - discountAmount) * taxRate;
-    return double.parse(raw.toStringAsFixed(2));
+    return 0.0;
   }
 
   double get total {

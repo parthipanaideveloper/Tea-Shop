@@ -23,7 +23,7 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -32,6 +32,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _biometricsAvailable = false;
   bool _biometricsLoading = false;
   final LocalAuthentication _auth = LocalAuthentication();
+
+  late AnimationController _animController;
 
   // Secret tap state
   int _tapCount = 0;
@@ -65,6 +67,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
+    _animController.forward();
     _checkBiometrics();
     _isHostDevice = MasterPasswordService().isHostDevice();
     
@@ -94,6 +98,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   void dispose() {
+    _animController.dispose();
     _usernameCtrl.dispose();
     _passwordCtrl.dispose();
     _shopCodeCtrl.dispose();
@@ -317,6 +322,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Widget _buildAnimatedWidget(Widget child, int index) {
+    final start = (index * 0.1).clamp(0.0, 1.0);
+    final end = (start + 0.4).clamp(0.0, 1.0);
+    final animation = CurvedAnimation(
+      parent: _animController,
+      curve: Interval(start, end, curve: Curves.easeOutCubic),
+    );
+    return AnimatedBuilder(
+      animation: _animController,
+      builder: (context, child) {
+        return Opacity(
+          opacity: animation.value,
+          child: Transform.translate(
+            offset: Offset(0, 30 * (1 - animation.value)),
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -328,7 +355,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: Column(
         children: [
           // ── Green Hero Header ──────────────────────────────────────────
-          _GreenHeader(onLogoTap: _onLogoTap),
+          _buildAnimatedWidget(_GreenHeader(onLogoTap: _onLogoTap), 0),
 
           // ── White scrollable body ──────────────────────────────────────
           Expanded(
@@ -342,21 +369,61 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const SizedBox(height: 16),
-                      Text(
-                        settings.shopName.toUpperCase(),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.5,
-                          color: _kGreen)),
+                      _buildAnimatedWidget(
+                        Column(
+                          children: [
+                            // Aesthetic Coffee Cup Icon
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: _kGreenLight.withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: _kGreenLight.withValues(alpha: 0.3),
+                                  width: 2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _kGreenLight.withOpacity(0.2),
+                                    blurRadius: 15,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.local_cafe_rounded,
+                                size: 42,
+                                color: _kGreen,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              settings.shopName.toUpperCase(),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 2.0,
+                                color: _kGreen,
+                              ),
+                            ),
+                          ],
+                        ),
+                        1,
+                      ),
                       const SizedBox(height: 4),
-                      Text(
-                        'Terminal Login',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 13)),
+                      _buildAnimatedWidget(
+                        Text(
+                          'Terminal Login',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 14,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        2,
+                      ),
                       const SizedBox(height: 32),
 
                       Form(
@@ -462,15 +529,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               const SizedBox(height: 16),
                             ],
 
-                            _buildField(
+                            _buildAnimatedWidget(_buildField(
                               controller: _usernameCtrl,
                               label: 'Username',
                               icon: Icons.person_outline_rounded,
                               validator: (v) => v == null || v.trim().isEmpty
                                   ? 'Please enter username'
-                                  : null),
+                                  : null), 3),
                             const SizedBox(height: 16),
-                            _buildField(
+                            _buildAnimatedWidget(_buildField(
                               controller: _passwordCtrl,
                               label: 'Password',
                               icon: Icons.lock_outline_rounded,
@@ -480,10 +547,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               validator: (v) => v == null || v.isEmpty
                                   ? 'Please enter password'
                                   : null,
-                              onFieldSubmitted: (_) => _submit()),
+                              onFieldSubmitted: (_) => _submit()), 4),
                             const SizedBox(height: 32),
 
-                            ElevatedButton(
+                            _buildAnimatedWidget(ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 16),
@@ -499,7 +566,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 15,
-                                  letterSpacing: 1.2))),
+                                  letterSpacing: 1.2))), 5),
 
                             if (_biometricsAvailable && lastUser == null) ...[
                               const SizedBox(height: 16),

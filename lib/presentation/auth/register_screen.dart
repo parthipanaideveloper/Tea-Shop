@@ -28,8 +28,9 @@ class RegisterScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late TabController _tabController;
+  late AnimationController _animController;
   final _securityService = SecurityService();
   String _deviceId = 'Loading...';
 
@@ -64,6 +65,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
+    _animController.forward();
     _loadDeviceId();
     _loadKeyGenState();
 
@@ -134,6 +137,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
 
   @override
   void dispose() {
+    _animController.dispose();
     _tabController.dispose();
     _shopNameCtrl.dispose();
     _adminUsernameCtrl.dispose();
@@ -555,6 +559,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     );
   }
 
+  Widget _buildAnimatedWidget(Widget child, int index) {
+    final start = (index * 0.1).clamp(0.0, 1.0);
+    final end = (start + 0.4).clamp(0.0, 1.0);
+    final animation = CurvedAnimation(
+      parent: _animController,
+      curve: Interval(start, end, curve: Curves.easeOutCubic),
+    );
+    return AnimatedBuilder(
+      animation: _animController,
+      builder: (context, child) {
+        return Opacity(
+          opacity: animation.value,
+          child: Transform.translate(
+            offset: Offset(0, 30 * (1 - animation.value)),
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -562,7 +588,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       body: Column(
         children: [
           // ── Green Hero Header ──────────────────────────────────────────
-          _GreenHeader(onLogoTap: _onLogoTap),
+          _buildAnimatedWidget(_GreenHeader(onLogoTap: _onLogoTap), 0),
 
           // ── White scrollable body ──────────────────────────────────────
           Expanded(
@@ -577,12 +603,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                       children: [
                         const SizedBox(height: 8),
                         // Tab bar
-                        _buildTabBar(),
+                        _buildAnimatedWidget(_buildTabBar(), 1),
                         const SizedBox(height: 4),
                         // Tab content via IndexedStack so both forms keep state
-                        _tabController.index == 0
-                            ? _buildStaffPortalTab()
-                            : _buildAdminSetupTab(),
+                        _buildAnimatedWidget(
+                          _tabController.index == 0
+                              ? _buildStaffPortalTab()
+                              : _buildAdminSetupTab(),
+                          2,
+                        ),
                       ],
                     ),
                   ),

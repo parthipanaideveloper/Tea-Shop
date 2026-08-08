@@ -165,7 +165,7 @@ class PrinterService {
                   'ITEM NAME',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 18 * scale,
+                    fontSize: 24 * scale,
                     color: Colors.black,
                   ),
                 ),
@@ -176,7 +176,7 @@ class PrinterService {
                   'PRICE',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 18 * scale,
+                    fontSize: 24 * scale,
                     color: Colors.black,
                   ),
                   textAlign: TextAlign.right,
@@ -199,7 +199,7 @@ class PrinterService {
                           ? "[${p.productNumber}] ${p.name}"
                           : p.name,
                       style: TextStyle(
-                        fontSize: 18 * scale,
+                        fontSize: 24 * scale,
                         color: Colors.black,
                       ),
                     ),
@@ -209,7 +209,7 @@ class PrinterService {
                     child: Text(
                       p.price.toStringAsFixed(2),
                       style: TextStyle(
-                        fontSize: 18 * scale,
+                        fontSize: 24 * scale,
                         color: Colors.black,
                       ),
                       textAlign: TextAlign.right,
@@ -226,7 +226,7 @@ class PrinterService {
             'Total Items: ${products.length}',
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 18 * scale,
+              fontSize: 24 * scale,
               color: Colors.black,
             ),
             textAlign: TextAlign.center,
@@ -639,7 +639,7 @@ class PrinterService {
                   'ITEM NAME',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 18 * scale,
+                    fontSize: 24 * scale,
                     color: Colors.black,
                   ),
                 ),
@@ -650,7 +650,7 @@ class PrinterService {
                   'QTY',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 18 * scale,
+                    fontSize: 24 * scale,
                     color: Colors.black,
                   ),
                   textAlign: TextAlign.center,
@@ -662,7 +662,7 @@ class PrinterService {
                   'AMOUNT',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 18 * scale,
+                    fontSize: 24 * scale,
                     color: Colors.black,
                   ),
                   textAlign: TextAlign.right,
@@ -683,7 +683,7 @@ class PrinterService {
                     child: Text(
                       e.key,
                       style: TextStyle(
-                        fontSize: 18 * scale,
+                        fontSize: 24 * scale,
                         color: Colors.black,
                       ),
                     ),
@@ -693,7 +693,7 @@ class PrinterService {
                     child: Text(
                       '${(e.value['count'] as num).toInt()}',
                       style: TextStyle(
-                        fontSize: 18 * scale,
+                        fontSize: 24 * scale,
                         color: Colors.black,
                       ),
                       textAlign: TextAlign.center,
@@ -704,7 +704,7 @@ class PrinterService {
                     child: Text(
                       (e.value['revenue'] as num).toDouble().toStringAsFixed(2),
                       style: TextStyle(
-                        fontSize: 18 * scale,
+                        fontSize: 24 * scale,
                         color: Colors.black,
                       ),
                       textAlign: TextAlign.right,
@@ -724,7 +724,7 @@ class PrinterService {
                 'Total Units:',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 18 * scale,
+                  fontSize: 24 * scale,
                   color: Colors.black,
                 ),
               ),
@@ -732,7 +732,7 @@ class PrinterService {
                 '$totalUnits',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 18 * scale,
+                  fontSize: 24 * scale,
                   color: Colors.black,
                 ),
               ),
@@ -919,15 +919,11 @@ class PrinterService {
         );
       }
 
-      bytes += generator.feed(1);
+      final String dateStr = DateFormat('dd-MM-yy hh:mm a').format(DateTime.now());
       bytes += generator.text(
-        'Date: ${DateFormat('dd-MM-yyyy hh:mm a').format(DateTime.now())}',
+        orderId.isNotEmpty ? '$dateStr | $orderId' : dateStr,
         styles: const PosStyles(align: PosAlign.center),
       );
-      bytes += generator.hr();
-      if (orderId.isNotEmpty) {
-        bytes += generator.text('Order ID: $orderId');
-      }
       if (tableNo != null && tableNo.isNotEmpty) {
         bytes += generator.text(
           'Table: $tableNo',
@@ -938,20 +934,6 @@ class PrinterService {
           (customerPhone != null && customerPhone.isNotEmpty)) {
         bytes += generator.text(
           'Customer: ${customerName ?? ''} ${customerPhone ?? ''}'.trim(),
-        );
-      }
-      bytes += generator.hr();
-
-      // Items header
-      if (is80mmPaper) {
-        bytes += generator.text(
-          'Item'.padRight(28) + 'Qty*Pr'.padLeft(11) + 'Total'.padLeft(9),
-          styles: const PosStyles(bold: true),
-        );
-      } else {
-        bytes += generator.text(
-          'Item'.padRight(16) + 'Qty*Pr'.padLeft(9) + 'Total'.padLeft(7),
-          styles: const PosStyles(bold: true),
         );
       }
       bytes += generator.hr();
@@ -988,14 +970,14 @@ class PrinterService {
           for (int i = 0; i < nameLines.length; i++) {
             if (i == 0) {
               bytes += generator.text(
-                nameLines[i].padRight(16) +
-                    qtyPrice.padLeft(9) +
-                    totalStr.padLeft(7),
+                nameLines[i].padRight(14) +
+                    qtyPrice.padLeft(10) +
+                    totalStr.padLeft(8, '.'), // Use dots for the final gap
                 styles: const PosStyles(bold: true),
               );
             } else {
               bytes += generator.text(
-                nameLines[i].padRight(16),
+                nameLines[i].padRight(14),
                 styles: const PosStyles(bold: true),
               );
             }
@@ -1005,35 +987,29 @@ class PrinterService {
       bytes += generator.hr();
 
       // Totals
-      if (is80mmPaper) {
-        bytes += generator.text(
-          'Subtotal'.padRight(30) + subtotal.toStringAsFixed(2).padLeft(18),
-        );
-        if (tax > 0) {
+      if (tax > 0 || discount > 0) {
+        if (is80mmPaper) {
           bytes += generator.text(
-            'Tax'.padRight(30) + tax.toStringAsFixed(2).padLeft(18),
+            'Subtotal'.padRight(30) + subtotal.toStringAsFixed(2).padLeft(18),
           );
-        }
-        if (discount > 0) {
-          bytes += generator.text(
-            'Discount'.padRight(30) +
-                '-${discount.toStringAsFixed(2)}'.padLeft(18),
-          );
-        }
-      } else {
-        bytes += generator.text(
-          'Subtotal'.padRight(20) + subtotal.toStringAsFixed(2).padLeft(12),
-        );
-        if (tax > 0) {
-          bytes += generator.text(
-            'Tax'.padRight(20) + tax.toStringAsFixed(2).padLeft(12),
-          );
-        }
-        if (discount > 0) {
-          bytes += generator.text(
-            'Discount'.padRight(20) +
-                '-${discount.toStringAsFixed(2)}'.padLeft(12),
-          );
+          if (tax > 0) {
+            bytes += generator.text(
+              'Tax'.padRight(30) + tax.toStringAsFixed(2).padLeft(18),
+            );
+          }
+          if (discount > 0) {
+            bytes += generator.text(
+              'Discount'.padRight(30) +
+                  '-${discount.toStringAsFixed(2)}'.padLeft(18),
+            );
+          }
+        } else {
+          if (discount > 0) {
+            bytes += generator.text(
+              'Discount'.padRight(18) +
+                  '-${discount.toStringAsFixed(2)}'.padLeft(14, '.'),
+            );
+          }
         }
       }
       bytes += generator.hr();
@@ -1059,14 +1035,12 @@ class PrinterService {
       } else {
         // On 58mm (32 characters printable width), we use Bold + Double-Height (Single Width)
         // to avoid wrapping issues when the total has 3 or more digits.
-        final String typeLabel = orderType != null
-            ? orderType.toUpperCase()
-            : 'TOTAL';
+        final String typeLabel = 'TOTAL';
         final String totalLabel = 'Rs. ${total.toStringAsFixed(2)}';
         const int totalSlots = 32;
         final int textLength = typeLabel.length + totalLabel.length;
         final int spacesNeeded = (totalSlots - textLength).clamp(1, totalSlots);
-        final String spaceStr = ' ' * spacesNeeded;
+        final String spaceStr = '.' * spacesNeeded;
 
         bytes += generator.rawBytes([
           27,
@@ -1091,17 +1065,6 @@ class PrinterService {
           styles: const PosStyles(align: PosAlign.center),
         );
       }
-      if (showPoweredByDiyan) {
-        bytes += generator.text(
-          is80mmPaper
-              ? 'Powered by DiyanTech Solutions, 8667442624'
-              : 'DiyanTech Solutions 8667442624',
-          styles: const PosStyles(
-            align: PosAlign.center,
-            fontType: PosFontType.fontB,
-          ),
-        );
-      }
       bytes += generator.feed(1);
       bytes += generator.cut();
       return bytes;
@@ -1115,7 +1078,7 @@ class PrinterService {
     final widget = Container(
       width: printerWidth,
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+      padding: EdgeInsets.zero,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1145,10 +1108,11 @@ class PrinterService {
               Expanded(
                 child: Column(
                   children: [
+                    Icon(Icons.local_cafe, size: 48 * scale, color: Colors.black),
                     Text(
                       shopName.toUpperCase(),
                       style: TextStyle(
-                        fontSize: 26 * scale,
+                        fontSize: 34 * scale,
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
                         fontFamily: GoogleFonts.notoSansTamil().fontFamily,
@@ -1163,7 +1127,7 @@ class PrinterService {
                         child: Text(
                           hotelType,
                           style: TextStyle(
-                            fontSize: 20 * scale,
+                            fontSize: 28 * scale,
                             color: Colors.black,
                             fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                           ),
@@ -1178,7 +1142,7 @@ class PrinterService {
                               child: Text(
                                 addressLine1,
                                 style: TextStyle(
-                                  fontSize: 18 * scale,
+                                  fontSize: 24 * scale,
                                   color: Colors.black,
                                   fontFamily:
                                       GoogleFonts.notoSansTamil().fontFamily,
@@ -1191,7 +1155,7 @@ class PrinterService {
                               child: Text(
                                 addressLine2,
                                 style: TextStyle(
-                                  fontSize: 18 * scale,
+                                  fontSize: 24 * scale,
                                   color: Colors.black,
                                   fontFamily:
                                       GoogleFonts.notoSansTamil().fontFamily,
@@ -1208,7 +1172,7 @@ class PrinterService {
                         child: Text(
                           'Ph: $mobileNumber',
                           style: TextStyle(
-                            fontSize: 18 * scale,
+                            fontSize: 24 * scale,
                             color: Colors.black,
                             fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                           ),
@@ -1224,7 +1188,7 @@ class PrinterService {
                       Text(
                         'FSSAI: $fssaiNumber | GSTIN: $gstNumber',
                         style: TextStyle(
-                          fontSize: 18 * scale,
+                          fontSize: 24 * scale,
                           color: Colors.black,
                           fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                         ),
@@ -1239,7 +1203,7 @@ class PrinterService {
                           child: Text(
                             'FSSAI: $fssaiNumber',
                             style: TextStyle(
-                              fontSize: 18 * scale,
+                              fontSize: 24 * scale,
                               color: Colors.black,
                               fontFamily:
                                   GoogleFonts.notoSansTamil().fontFamily,
@@ -1252,7 +1216,7 @@ class PrinterService {
                           child: Text(
                             'GSTIN: $gstNumber',
                             style: TextStyle(
-                              fontSize: 18 * scale,
+                              fontSize: 24 * scale,
                               color: Colors.black,
                               fontFamily:
                                   GoogleFonts.notoSansTamil().fontFamily,
@@ -1264,7 +1228,7 @@ class PrinterService {
                     Text(
                       'Date: ${DateFormat('dd-MM-yyyy hh:mm a').format(DateTime.now())}',
                       style: TextStyle(
-                        fontSize: 18 * scale,
+                        fontSize: 24 * scale,
                         color: Colors.black,
                         fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                       ),
@@ -1285,7 +1249,7 @@ class PrinterService {
                 Text(
                   'Order ID: ${orderId.length > 15 ? orderId.substring(0, 15) : orderId}',
                   style: TextStyle(
-                    fontSize: 18 * scale,
+                    fontSize: 24 * scale,
                     color: Colors.black,
                     fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                   ),
@@ -1294,7 +1258,7 @@ class PrinterService {
                 Text(
                   'Table: $tableNo',
                   style: TextStyle(
-                    fontSize: 20 * scale,
+                    fontSize: 28 * scale,
                     color: Colors.black,
                     fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                   ),
@@ -1308,7 +1272,7 @@ class PrinterService {
               child: Text(
                 'Customer: ${customerName ?? ''} ${customerPhone ?? ''}'.trim(),
                 style: TextStyle(
-                  fontSize: 18 * scale,
+                  fontSize: 24 * scale,
                   color: Colors.black,
                   fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                 ),
@@ -1323,7 +1287,7 @@ class PrinterService {
                 child: Text(
                   'Item',
                   style: TextStyle(
-                    fontSize: 18 * scale,
+                    fontSize: 24 * scale,
                     color: Colors.black,
                     fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                   ),
@@ -1337,7 +1301,7 @@ class PrinterService {
                   child: Text(
                     'QtyxPrice',
                     style: TextStyle(
-                      fontSize: 18 * scale,
+                      fontSize: 24 * scale,
                       color: Colors.black,
                       fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                     ),
@@ -1352,7 +1316,7 @@ class PrinterService {
                   child: Text(
                     'Total',
                     style: TextStyle(
-                      fontSize: 18 * scale,
+                      fontSize: 24 * scale,
                       color: Colors.black,
                       fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                     ),
@@ -1384,7 +1348,7 @@ class PrinterService {
                         Text(
                           name,
                           style: TextStyle(
-                            fontSize: 18 * scale,
+                            fontSize: 24 * scale,
                             color: Colors.black,
                             fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                           ),
@@ -1393,7 +1357,7 @@ class PrinterService {
                           Text(
                             tamilName,
                             style: TextStyle(
-                              fontSize: 18 * scale,
+                              fontSize: 24 * scale,
                               color: Colors.black,
                               fontFamily:
                                   GoogleFonts.notoSansTamil().fontFamily,
@@ -1410,7 +1374,7 @@ class PrinterService {
                       child: Text(
                         '${item.quantity} x ${item.effectivePrice(orderType).toStringAsFixed(2)}',
                         style: TextStyle(
-                          fontSize: 18 * scale,
+                          fontSize: 24 * scale,
                           color: Colors.black,
                           fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                         ),
@@ -1425,7 +1389,7 @@ class PrinterService {
                       child: Text(
                         item.effectiveTotal(orderType).toStringAsFixed(2),
                         style: TextStyle(
-                          fontSize: 18 * scale,
+                          fontSize: 24 * scale,
                           color: Colors.black,
                           fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                         ),
@@ -1439,49 +1403,8 @@ class PrinterService {
 
           Container(height: 1.5 * scale, color: Colors.black, margin: EdgeInsets.symmetric(vertical: 2 * scale)),
 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Subtotal',
-                style: TextStyle(
-                  fontSize: 18 * scale,
-                  color: Colors.black,
-                  fontFamily: GoogleFonts.notoSansTamil().fontFamily,
-                ),
-              ),
-              Text(
-                subtotal.toStringAsFixed(2),
-                style: TextStyle(
-                  fontSize: 18 * scale,
-                  color: Colors.black,
-                  fontFamily: GoogleFonts.notoSansTamil().fontFamily,
-                ),
-              ),
-            ],
-          ),
-          if (tax > 0)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Tax',
-                  style: TextStyle(
-                    fontSize: 18 * scale,
-                    color: Colors.black,
-                    fontFamily: GoogleFonts.notoSansTamil().fontFamily,
-                  ),
-                ),
-                Text(
-                  tax.toStringAsFixed(2),
-                  style: TextStyle(
-                    fontSize: 18 * scale,
-                    color: Colors.black,
-                    fontFamily: GoogleFonts.notoSansTamil().fontFamily,
-                  ),
-                ),
-              ],
-            ),
+
+
           if (discount > 0)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1489,7 +1412,7 @@ class PrinterService {
                 Text(
                   'Discount',
                   style: TextStyle(
-                    fontSize: 18 * scale,
+                    fontSize: 24 * scale,
                     color: Colors.black,
                     fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                   ),
@@ -1497,7 +1420,7 @@ class PrinterService {
                 Text(
                   '-${discount.toStringAsFixed(2)}',
                   style: TextStyle(
-                    fontSize: 18 * scale,
+                    fontSize: 24 * scale,
                     color: Colors.black,
                     fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                   ),
@@ -1511,9 +1434,9 @@ class PrinterService {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                orderType != null ? orderType.toUpperCase() : 'TOTAL',
+                'TOTAL',
                 style: TextStyle(
-                  fontSize: 20 * scale,
+                  fontSize: 28 * scale,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                   fontFamily: GoogleFonts.notoSansTamil().fontFamily,
@@ -1522,7 +1445,7 @@ class PrinterService {
               Text(
                 'Rs. ${total.toStringAsFixed(2)}',
                 style: TextStyle(
-                  fontSize: 20 * scale,
+                  fontSize: 28 * scale,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                   fontFamily: GoogleFonts.notoSansTamil().fontFamily,
@@ -1537,7 +1460,7 @@ class PrinterService {
               child: Text(
                 receiptFooter,
                 style: TextStyle(
-                  fontSize: 18 * scale,
+                  fontSize: 24 * scale,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                   fontFamily: GoogleFonts.notoSansTamil().fontFamily,
@@ -1557,19 +1480,6 @@ class PrinterService {
                   fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                 ),
                 textAlign: TextAlign.center,
-              ),
-            ),
-          const SizedBox(height: 2),
-          if (showPoweredByDiyan)
-            Center(
-              child: Text(
-                'Powered by DiyanTech Solutions, 8667442624',
-                style: TextStyle(
-                  fontSize: 10 * scale,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                  fontFamily: GoogleFonts.notoSansTamil().fontFamily,
-                ),
               ),
             ),
         ],
@@ -1909,7 +1819,7 @@ class PrinterService {
                     Text(
                       'Order ID: ${orderId.length > 15 ? orderId.substring(0, 15) : orderId}',
                       style: TextStyle(
-                        fontSize: 20 * scale,
+                        fontSize: 28 * scale,
                         color: Colors.black,
                         fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                       ),
@@ -1928,7 +1838,7 @@ class PrinterService {
               Text(
                 'Item',
                 style: TextStyle(
-                  fontSize: 20 * scale,
+                  fontSize: 28 * scale,
                   color: Colors.black,
                   fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                 ),
@@ -1938,7 +1848,7 @@ class PrinterService {
                 child: Text(
                   'Qty',
                   style: TextStyle(
-                    fontSize: 20 * scale,
+                    fontSize: 28 * scale,
                     color: Colors.black,
                     fontFamily: GoogleFonts.notoSansTamil().fontFamily,
                   ),
