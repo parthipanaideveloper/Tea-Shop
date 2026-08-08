@@ -717,6 +717,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                                 },
                               ),
                               const SizedBox(width: 8),
+                              if (isStaff == false)
+                                IconButton(
+                                  icon: const Icon(Icons.auto_awesome, color: Colors.blueAccent),
+                                  tooltip: 'AI Menu Generator',
+                                  onPressed: () => _showAiMenuGenerator(context),
+                                ),
+                              const SizedBox(width: 8),
                               PopupMenuButton<String>(
                                 icon: const Icon(Icons.print),
                                 tooltip: 'Print / Export Inventory',
