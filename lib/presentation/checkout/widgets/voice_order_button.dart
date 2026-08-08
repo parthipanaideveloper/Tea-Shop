@@ -75,6 +75,8 @@ class _VoiceOrderButtonState extends ConsumerState<VoiceOrderButton> {
       }
     } else {
       final cartNotifier = ref.read(cartProvider.notifier);
+      final numpadNotifier = ref.read(numpadSelectedProductProvider.notifier);
+      
       for (final entry in mappedOrder.entries) {
         final productId = entry.key;
         final qty = entry.value;
@@ -86,6 +88,12 @@ class _VoiceOrderButtonState extends ConsumerState<VoiceOrderButton> {
           if (qty > 1) {
             cartNotifier.updateQuantity(product.id, qty);
           }
+          
+          // Flash zoom effect
+          numpadNotifier.update(product);
+          await Future.delayed(const Duration(milliseconds: 500));
+          numpadNotifier.update(null);
+          
         } catch (e) {
           debugPrint('Product not found: ');
         }

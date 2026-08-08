@@ -41,7 +41,7 @@ class AiService {
 
     final prompt = '''
 You are an intelligent ordering assistant for a tea shop.
-The user is speaking in natural Tanglish (Tamil mixed with English).
+The user is speaking in natural Tanglish (Tamil mixed with English) or raw Tamil.
 Your task is to identify which items they want to order from the inventory and in what quantities.
 
 Current Inventory:
@@ -52,7 +52,7 @@ User's spoken text:
 
 Rules:
 1. Match the spoken items to the inventory based on 'name' or 'nameTamil'.
-2. Handle Tamil quantity numbers spoken in Tanglish (e.g. "onnu" or "ondu" = 1, "rendu" = 2, "moonu" = 3, "naalu" = 4, "anju" = 5, "aaru" = 6, "ezhu" = 7, "ettu" = 8, "ombothu" = 9, "pathu" = 10).
+2. Handle Tamil quantity numbers spoken in Tanglish or Tamil script (e.g. "oru", "onnu", "ondu", "ஒரு" = 1, "rendu", "ரெண்டு", "இரண்டு" = 2, "moonu", "மூன்று", "மூனு" = 3, "naalu", "நாலு", "நான்கு" = 4, "anju", "அஞ்சு", "ஐந்து" = 5, "aaru", "ஆறு" = 6, "ezhu", "ஏழு" = 7, "ettu", "எட்டு" = 8, "ombothu", "ஒன்பது" = 9, "pathu", "பத்து" = 10).
 3. Return ONLY a valid JSON array of objects, with each object having "id" (string) and "quantity" (number). 
 4. If no items match, return an empty array [].
 5. Do NOT wrap the JSON in Markdown formatting like ```json ... ```. Just return the raw JSON array.
