@@ -15,6 +15,7 @@ import '../../../domain/models/order.dart';
 import '../../providers/auth_provider.dart';
 import '../../../providers/product_order_provider.dart';
 import 'widgets/payment_dialog.dart';
+import 'widgets/voice_order_button.dart';
 import '../analytics/analytics_screen.dart';
 import '../../providers/printer_provider.dart';
 import '../settings/printer_settings_screen.dart';
@@ -88,9 +89,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             : _ProductPicker(key: globalProductPickerKey),
       ),
 
-      floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
-      floatingActionButton: (!isDesktop && isLandscape && cart.items.isNotEmpty)
-          ? Padding(
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          const VoiceOrderButton(),
+          const SizedBox(height: 16),
+          if (!isDesktop && isLandscape && cart.items.isNotEmpty)
+            Padding(
               padding: const EdgeInsets.only(top: 8.0),
               child: FloatingActionButton.extended(
                 backgroundColor: theme.colorScheme.primary,

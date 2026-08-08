@@ -1,3 +1,4 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -43,6 +44,11 @@ Future<Box<T>> _openEncryptedBoxSafe<T>(String name, HiveAesCipher cipher) async
 void main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
+    try {
+      await dotenv.load(fileName: '.env');
+    } catch (e) {
+      debugPrint('Failed to load .env file: $e');
+    }
 
     // Setup Global Error Listeners
     FlutterError.onError = (FlutterErrorDetails details) {

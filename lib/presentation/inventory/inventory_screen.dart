@@ -1,3 +1,4 @@
+import '../../core/services/ai_service.dart';
 import 'package:pos/core/utils/notification_helper.dart';
 import 'dart:io';
 import 'dart:convert';
@@ -36,6 +37,72 @@ class InventoryScreen extends ConsumerStatefulWidget {
 
 class _InventoryScreenState extends ConsumerState<InventoryScreen>
     with SingleTickerProviderStateMixin {
+  void _showAiMenuGenerator(BuildContext context) {
+    final controller = TextEditingController();
+    bool isGenerating = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            return AlertDialog(
+              title: const Text('AI Menu Generator'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Enter a prompt like "Suggest 3 summer drinks"'),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: controller,
+                    decoration: const InputDecoration(border: OutlineInputBorder()),
+                    maxLines: 3,
+                  ),
+                  if (isGenerating) const Padding(padding: EdgeInsets.only(top: 16), child: CircularProgressIndicator()),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isGenerating ? null : () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: isGenerating ? null : () async {
+                    if (controller.text.trim().isEmpty) return;
+                    setState(() => isGenerating = true);
+                    final suggestions = await AiService().generateMenuItems(controller.text);
+                    setState(() => isGenerating = false);
+                    
+                    if (context.mounted) {
+                      Navigator.pop(ctx);
+                      if (suggestions.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not generate items.')));
+                        return;
+                      }
+                      
+                      for (var p in suggestions) {
+                        ref.read(inventoryProvider.notifier).addProduct(
+                          name: p.name,
+                          nameTamil: p.nameTamil,
+                          category: p.category,
+                          price: p.price,
+                          stockCount: p.stockCount,
+                          allowHalfPortion: p.allowHalfPortion,
+                        );
+                      }
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Added ${suggestions.length} items from AI!')));
+                    }
+                  },
+                  child: const Text('Generate & Add'),
+                ),
+              ],
+            );
+          }
+        );
+      }
+    );
+  }
+
   late TabController _tabController;
   late TextEditingController _searchController;
   int _activeTabIndex = 0;
@@ -457,6 +524,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen>
                 ),
               ),
               actions: [
+                if (isStaff == false)
+                  IconButton(
+                    icon: const Icon(Icons.auto_awesome, color: Colors.blueAccent),
+                    onPressed: () => _showAiMenuGenerator(context),
+                  ),
                 GestureDetector(
                   onTap: () =>
                       Navigator.popUntil(context, (route) => route.isFirst),
