@@ -32,6 +32,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'expiring_shops_screen.dart';
 import '../../domain/models/product.dart';
 import 'desktop_overview_dashboard.dart';
+import 'ai_assistant_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   final Function(int) onNavigate;
@@ -305,6 +306,15 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const AiAssistantScreen()));
+        },
+        icon: const Icon(Icons.auto_awesome),
+        label: const Text('Ask AI'),
+        backgroundColor: Colors.purple,
+        foregroundColor: Colors.white,
+      ),
       appBar: isMasterAdmin
           ? AppBar(
               title: Text('Master Admin Dashboard'.tr(ref.watch(languageProvider))),

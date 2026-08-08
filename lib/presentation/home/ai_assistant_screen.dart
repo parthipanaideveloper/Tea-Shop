@@ -28,9 +28,9 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
     final orderState = ref.read(orderProvider);
     final salesData = {
       'totalOrders': orderState.length,
-      'totalRevenue': orderState.fold(0.0, (sum, o) => sum + o.totalAmount),
-      'upiRevenue': orderState.where((o) => o.paymentMethod == 'UPI').fold(0.0, (sum, o) => sum + o.totalAmount),
-      'cashRevenue': orderState.where((o) => o.paymentMethod == 'Cash').fold(0.0, (sum, o) => sum + o.totalAmount),
+      'totalRevenue': orderState.fold(0.0, (sum, o) => sum + o.total),
+      'upiRevenue': orderState.where((o) => o.paymentMode == 'UPI').fold(0.0, (sum, o) => sum + o.total),
+      'cashRevenue': orderState.where((o) => o.paymentMode == 'Cash').fold(0.0, (sum, o) => sum + o.total),
     };
 
     final response = await AiService().askSalesAssistant(text, salesData);
