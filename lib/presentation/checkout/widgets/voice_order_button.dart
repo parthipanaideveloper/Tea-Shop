@@ -104,27 +104,52 @@ class _VoiceOrderButtonState extends ConsumerState<VoiceOrderButton> {
     }
   }
 
+  void _toggleListening() {
+    if (_isListening) {
+      _stopListening();
+    } else {
+      _startListening();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isProcessing) {
-      return FloatingActionButton(
-        onPressed: null,
-        backgroundColor: Colors.grey,
-        child: const CircularProgressIndicator(color: Colors.white),
+      return Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade400,
+          shape: BoxShape.circle,
+        ),
+        child: const Padding(
+          padding: EdgeInsets.all(12.0),
+          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+        ),
       );
     }
 
-    return GestureDetector(
-      onLongPressStart: (_) => _startListening(),
-      onLongPressEnd: (_) => _stopListening(),
-      child: FloatingActionButton(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Hold button to speak')),
-          );
-        },
-        backgroundColor: _isListening ? Colors.red : Colors.blue,
-        child: Icon(_isListening ? Icons.mic : Icons.mic_none),
+    return InkWell(
+      onTap: _toggleListening,
+      customBorder: const CircleBorder(),
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: _isListening ? Colors.red : Colors.blue,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: (_isListening ? Colors.red : Colors.blue).withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Icon(
+          _isListening ? Icons.mic : Icons.mic_none,
+          color: Colors.white,
+        ),
       ),
     );
   }

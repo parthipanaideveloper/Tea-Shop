@@ -89,15 +89,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             : _ProductPicker(key: globalProductPickerKey),
       ),
 
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          const VoiceOrderButton(),
-          const SizedBox(height: 16),
-          if (!isDesktop && isLandscape && cart.items.isNotEmpty)
-            Padding(
+      floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
+      floatingActionButton: (!isDesktop && isLandscape && cart.items.isNotEmpty)
+          ? Padding(
               padding: const EdgeInsets.only(top: 8.0),
               child: FloatingActionButton.extended(
                 backgroundColor: theme.colorScheme.primary,
@@ -982,9 +976,12 @@ class _ProductPickerState extends ConsumerState<_ProductPicker>
                   horizontal: 16.0,
                   vertical: isMobileLandscape ? 0.0 : 4.0,
                 ),
-                child: TextField(
-                  controller: _searchCtrl,
-                  focusNode: _searchFocusNode,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchCtrl,
+                        focusNode: _searchFocusNode,
                   onChanged: (value) {
                     String query = value;
                     if (value.contains('*') ||
@@ -1032,6 +1029,11 @@ class _ProductPickerState extends ConsumerState<_ProductPicker>
                   ),
                 ),
               ),
+              const SizedBox(width: 12),
+              const VoiceOrderButton(),
+            ],
+          ),
+        ),
 
               // WhatsApp-style scrollable TabBar
               if (categories.isNotEmpty) ...[

@@ -52,9 +52,10 @@ User's spoken text:
 
 Rules:
 1. Match the spoken items to the inventory based on 'name' or 'nameTamil'.
-2. Return ONLY a valid JSON array of objects, with each object having "id" (string) and "quantity" (number). 
-3. If no items match, return an empty array [].
-4. Do NOT wrap the JSON in Markdown formatting like ```json ... ```. Just return the raw JSON array.
+2. Handle Tamil quantity numbers spoken in Tanglish (e.g. "onnu" or "ondu" = 1, "rendu" = 2, "moonu" = 3, "naalu" = 4, "anju" = 5, "aaru" = 6, "ezhu" = 7, "ettu" = 8, "ombothu" = 9, "pathu" = 10).
+3. Return ONLY a valid JSON array of objects, with each object having "id" (string) and "quantity" (number). 
+4. If no items match, return an empty array [].
+5. Do NOT wrap the JSON in Markdown formatting like ```json ... ```. Just return the raw JSON array.
 ''';
 
     try {
