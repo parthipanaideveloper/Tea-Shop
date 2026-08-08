@@ -25,21 +25,31 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
     });
     _controller.clear();
 
-    final orderState = ref.read(orderProvider);
-    final salesData = {
-      'totalOrders': orderState.length,
-      'totalRevenue': orderState.fold(0.0, (sum, o) => sum + o.total),
-      'upiRevenue': orderState.where((o) => o.paymentMode == 'UPI').fold(0.0, (sum, o) => sum + o.total),
-      'cashRevenue': orderState.where((o) => o.paymentMode == 'Cash').fold(0.0, (sum, o) => sum + o.total),
-    };
+    try {
+      final orderState = ref.read(orderProvider);
+      final salesData = {
+        'totalOrders': orderState.length,
+        'totalRevenue': orderState.fold(0.0, (sum, o) => (sum as double) + o.total),
+        'upiRevenue': orderState.where((o) => o.paymentMode == 'UPI').fold(0.0, (sum, o) => (sum as double) + o.total),
+        'cashRevenue': orderState.where((o) => o.paymentMode == 'Cash').fold(0.0, (sum, o) => (sum as double) + o.total),
+      };
 
-    final response = await AiService().askSalesAssistant(text, salesData);
+      final response = await AiService().askSalesAssistant(text, salesData);
 
-    if (mounted) {
-      setState(() {
-        _messages.add({'role': 'ai', 'content': response});
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _messages.add({'role': 'ai', 'content': response});
+          _isLoading = false;
+        });
+      }
+    } catch (e, st) {
+      debugPrint('Error in _sendMessage: $e\n$st');
+      if (mounted) {
+        setState(() {
+          _messages.add({'role': 'ai', 'content': 'Error processing your request: $e'});
+          _isLoading = false;
+        });
+      }
     }
   }
 
